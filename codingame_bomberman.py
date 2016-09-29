@@ -6,7 +6,9 @@ WIDTH, HEIGHT, MY_ID = [int(i) for i in input().split()]
 BOMB = 1
 PLAYER = 0
 EMPTY_CELL = '.'
-BOX = '0'
+EMPTY_BOX = 0
+EXTRA_RANGE = 1
+EXTRA_BOMB = 2
 
 def explosion_victims(board, square_x, square_y, radius):
     box_squares = []
@@ -30,7 +32,7 @@ def explosion_victims(board, square_x, square_y, radius):
 
 def contains_box(board, x, y):
     result = False
-    if (x >= 0 and y >= 0 and x < WIDTH and y < HEIGHT and board[y][x] == BOX):
+    if (x >= 0 and y >= 0 and x < WIDTH and y < HEIGHT and board[y][x] != EMPTY_CELL):
         result = True
 #    print ((x, y, result))
     return result
@@ -77,7 +79,7 @@ class Entity():
     def distance_to(self, point_b):
         return distance((self.x, self.y), point_b)
 
-def abstract_in_bomb(entity):
+def abstract_in_bomb(abstracted_board, entity):
     victims = entity.boxes_within_range(board)
     for victim in victims:
         abstracted_board[victim[1]][victim[0]] = EMPTY_CELL
@@ -88,7 +90,7 @@ def abstractify_board(board):
     
     for entity in entities:
         if entity.is_bomb():
-            abstracted_board = abstract_in_bomb(entity)
+            abstracted_board = abstract_in_bomb(abstracted_board, entity)
 
     return abstracted_board
 
@@ -97,7 +99,7 @@ def compute_square_values(board):
 
     for i in range(HEIGHT):
         for j in range(WIDTH):
-            square_values[i][j] = len(explosion_victims(abstracted_board, j, i, 3))
+            square_values[i][j] = len(explosion_victims(abstracted_board, j, i, me.explosion_range()))
 
     return square_values
 
@@ -128,6 +130,14 @@ def squares_by_value(square_values):
             value_squares.append((square_values[i][j], j, i))
     return value_squares
 
+def first_unblocked_square(value_squares, abstracted_board):
+    nearest_maximum = value_squares[0]
+    i = 0
+    while (abstracted_board[nearest_maximum[2]][nearest_maximum[1]] != EMPTY_CELL):
+        i += 1
+        nearest_maximum = value_squares[i]
+    return nearest_maximum
+
 # game loop
 while True:
     board = []
@@ -151,17 +161,18 @@ while True:
     square_values = compute_square_values(abstracted_board)
     value_squares = squares_by_value(square_values)
     value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
-    nearest_maximum = value_squares[0]
+
+    nearest_maximum = first_unblocked_square(value_squares, abstracted_board)
 
     x, y = nearest_maximum[1], nearest_maximum[2]
     if (me.x == x and me.y == y and me.bombs_remaining() > 0):
         
         #account for the bomb i'm about to place to figure out where to go next
-        abstracted_board = abstract_in_bomb(Entity([1, 1, x, y, 8, 3]))
+        abstracted_board = abstract_in_bomb(abstracted_board, Entity([1, 1, x, y, 8, me.explosion_range()]))
         square_values = compute_square_values(abstracted_board)
         value_squares = squares_by_value(square_values)
         value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
-        next_maximum = value_squares[0]
+        next_maximum = first_unblocked_square(value_squares, abstracted_board)
 
         print ("BOMB " + str(next_maximum[1]) + " " + str(next_maximum[2]))
     else:
