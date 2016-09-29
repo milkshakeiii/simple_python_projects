@@ -80,6 +80,12 @@ class Move():
         self.y = y
         self.player = player
 
+    def __repr__(self):
+        return self.get_string()
+
+    def __gt__(a, b):
+        return a.x > b.x
+
     def get_string(self):
         move_string = ""
         if self.move_type == MOVE_MOVE:
@@ -163,7 +169,6 @@ class Position():
             move = player_moves[0]
 
             if move.move_type == BOMB_MOVE:
-                print (mover.explosion_range())
                 new_bombs.append(Entity([BOMB, move.player, mover.x, mover.y, COUNTDOWN, mover.explosion_range()]))
 
             if (not contains_movement_blocker(result, move.x, move.y)):
@@ -243,7 +248,7 @@ class Entity():
             raise TypeError("This is not a bomb.")
 
     def bombs_remaining(self):
-        if self.is_player():
+        if self.is_any_player():
             return self.param_1
         else:
             raise TypeError("This is not a player.")
@@ -307,6 +312,55 @@ class Entity():
     def distance_to(self, point_b):
         return distance((self.x, self.y), point_b)
 
+def possible_moves(position):
+    def possible_moves_for_player(player):
+        possible_moves = []
+        for direction in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]:
+            target = (player.x+direction[0], player.y+direction[1])
+            if not contains_movement_blocker(position, target[0], target[1]):
+                possible_moves.append(Move(MOVE_MOVE, target[0], target[1], player.owner))
+                if (player.bombs_remaining() > 0):
+                    possible_moves.append(Move(BOMB_MOVE, target[0], target[1], player.owner))
+        if len(possible_moves) == 0:
+            possible_moves.append(Move(MOVE_MOVE, player.x, player.y, player.owner))
+        return possible_moves
+    
+    me = [entity for entity in position.entities if entity.is_me()][0]
+    my_possible_moves = possible_moves_for_player(me)
+    
+    them = [entity for entity in position.entities if (not entity.is_me()) and entity.is_any_player()][0]
+    their_possible_moves = possible_moves_for_player(them)
+
+    possible_moves = {}
+    for move in my_possible_moves:
+        possible_moves[move] = their_possible_moves
+
+    return possible_moves
+
+    
+#returns (evaluation, move)
+def minimax(position, depth):
+    print(depth)
+    
+    evaluation = position.evaluate()
+    if depth == 0 or evaluation == float('-inf') or evaluation == float('inf'):
+        return (evaluation, None)
+
+    my_move_evaluations = []
+    these_possible_moves = possible_moves(position)
+    for my_move in these_possible_moves.keys():
+        their_moves = these_possible_moves[my_move]
+        evaluations = []
+        for their_move in their_moves:
+            result_position = position.move_result([my_move] + [their_move])
+            evaluations.append(minimax(result_position, depth-1)[0])
+        my_move_evaluations.append((min(evaluations), my_move))
+    my_best_move = max(my_move_evaluations)
+    return my_best_move
+        
+        
+    
+
 # game loop
 while True:
     board = []
@@ -314,64 +368,16 @@ while True:
         row = list(input())
         board.append(row)
         
+
     entities_count = int(input())
     entities = []
     for i in range(entities_count):
         parameters = [int(j) for j in input().split()]
         entities.append(Entity(parameters))
-    
-    me = -1
-    for entity in entities:
-        if entity.is_me():
-            me = entity
+
 
     position = Position(board, entities)
+
             
-    print(Move(BOMB_MOVE, 6, 5, MY_ID).get_string())
+    print(minimax(position, 3)[1].get_string())
 
-    #test
-    position.display()
-    sequenced_moves = [[Move(BOMB_MOVE, 1, 0, 1)],
-                       [Move(BOMB_MOVE, 1, 1, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 1, 1)],
-                       [Move(MOVE_MOVE, 2, 1, 1)],
-                       [Move(BOMB_MOVE, 1, 1, 1)],
-                       [Move(BOMB_MOVE, 0, 1, 1)],
-                       [Move(MOVE_MOVE, 0, 2, 1)],
-                       [Move(MOVE_MOVE, 0, 3, 1)],
-                       [Move(MOVE_MOVE, 0, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 2, 2, 1)],
-                       [Move(MOVE_MOVE, 3, 2, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 4, 1, 1)],
-                       [Move(BOMB_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 1, 1)],
-                       [Move(MOVE_MOVE, 3, 0, 1)],
-                       [Move(MOVE_MOVE, 4, 0, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(BOMB_MOVE, 1, 3, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)],
-                       [Move(MOVE_MOVE, 1, 2, 1)]]
-
-    new_position = copy.deepcopy(position)
-    for moves in sequenced_moves:
-        new_position = new_position.move_result(moves)
-        new_position.display()
-        print ("---")
-    break
