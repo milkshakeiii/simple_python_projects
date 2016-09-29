@@ -41,8 +41,6 @@ def contains_blocker(board, x, y):
 def distance(a, b):
     return abs(a[0]-b[0]) + abs(a[1] - b[1])
 
-def shortest_path(board, a, b):
-    return "the results of a boring bfs...?"
 
 class Entity():
     def __init__(self, parameters):
