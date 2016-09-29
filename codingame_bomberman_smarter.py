@@ -1,7 +1,10 @@
 import sys
 import math
+import copy
 
 WIDTH, HEIGHT, MY_ID = [int(i) for i in input().split()]
+
+COUNTDOWN = 8
 
 ITEM = 2
 BOMB = 1
@@ -17,32 +20,55 @@ EXTRA_BOMB = 2
 BOMB_MOVE = 0
 MOVE_MOVE = 1
 
-def explosion_blockers(board, square_x, square_y, radius):
+def explosion_hits(position, square_x, square_y, radius):
     box_squares = []
+    victims = []
     for x in range(square_x+1, square_x+radius):
-        if contains_box(board, x, square_y):
+        victims += contained_victims(position, x, square_y)
+        if contains_box(position, x, square_y):
             box_squares.append((x, square_y))
+        if contains_blocker(position, x, square_y):
             break
+                        
     for x in reversed(range(square_x-radius+1, square_x)):
-        if contains_box(board, x, square_y):
+        victims += contained_victims(position, x, square_y)
+        if contains_box(position, x, square_y):
             box_squares.append((x, square_y))
+        if contains_blocker(position, x, square_y):
             break
+                        
     for y in range(square_y+1, square_y+radius):
-        if contains_box(board, square_x, y):
+        victims += contained_victims(position, square_x, y)
+        if contains_box(position, square_x, y):
             box_squares.append((square_x, y))
+        if contains_blocker(position, square_x, y):
             break
+                        
     for y in reversed(range(square_y-radius+1, square_y)):
-        if contains_box(board, square_x, y):
+        victims += contained_victims(position, square_x, y)
+        if contains_box(position, square_x, y):
             box_squares.append((square_x, y))
+        if contains_blocker(position, square_x, y):
             break
-    return box_squares
 
-def contains_blocker(board, x, y):
-    result = False
-    if (x >= 0 and y >= 0 and x < WIDTH and y < HEIGHT and board[y][x] != EMPTY_CELL):
-        result = True
-#    print ((x, y, result))
-    return result
+    return (box_squares, victims)
+
+def contains_wall(postion, x, y):
+    return (x < 0 or y < 0 or x >= WIDTH or y >= HEIGHT or postion.board[y][x] == WALL)
+
+def contains_box(position, x, y):
+    return (not contains_wall(position, x, y)) and position.board[y][x] != EMPTY_CELL
+
+def contains_blocker(position, x, y):
+    non_player_victims = [victim for victim in contained_victims(position, x, y) if not victim.is_any_player()]
+    return contains_wall(position, x, y) or contains_box(position, x, y) or len(non_player_victims) > 0
+
+def contains_movement_blocker(position, x, y):
+    bombs = [victim for victim in contained_victims(position, x, y) if victim.is_bomb()]
+    return contains_wall(position, x, y) or contains_box(position, x, y) or len(bombs) > 0
+
+def contained_victims(position, x, y):
+    return [entity for entity in position.entities if entity.x == x and entity.y == y]
 
 def distance(a, b):
     return abs(a[0]-b[0]) + abs(a[1] - b[1])
@@ -69,9 +95,123 @@ class Position():
     def __init__(self, board, entities):
         self.board = board
         self.entities = entities
+        self.player_points = {}
+        for entity in entities:
+            if entity.is_any_player():
+                self.player_points[entity.owner] = 0
 
-    def do_move(self, player, move):
-        return False
+    def move_result(self, moves):
+        result = copy.deepcopy(self)
+
+        new_items = []
+        cells_to_empty = []
+        destroyed_entities = []
+        new_bombs = []
+
+        #####################################collect items
+        for entity in result.entities:
+            if (entity.is_any_player()):
+                colocated_entities = [colo for colo in result.entities if colo.x == entity.x and colo.y == entity.y]
+                for colocated_entity in colocated_entities:
+                    if colocated_entity.is_item():
+                        if colocated_entity.item_type() == EXTRA_BOMB:
+                            entity.bomb_capacity_upgrade()
+                        if colocated_entity.item_type() == EXTRA_RANGE:
+                            entity.explosion_range_upgrade()
+                        result.entities.remove(colocated_entity)
+        
+        ####################################do bombs
+        for entity in result.entities:
+            if entity.is_bomb():
+                entity.tick_tock()
+
+        exploding_bombs = [entity for entity in result.entities if (entity.is_bomb() and entity.countdown() == 0)]
+        #while there are still bombs left to explode
+        while (len(exploding_bombs) != 0):
+            bomb = exploding_bombs.pop(0)
+            #explode them
+            destroyed_entities.append(bomb)
+            hits = explosion_hits(result, bomb.x, bomb.y, bomb.explosion_range())
+            
+            #replace boxes with items on empty cells
+            for box_spot in hits[0]:
+                x, y = box_spot
+                box_type = int(result.board[y][x])
+                #award points
+                result.player_points[bomb.owner] = result.player_points[bomb.owner] + 1
+                cells_to_empty.append((x, y))
+                if (box_type != EMPTY_BOX):
+                    new_items.append(Entity([ITEM, 0, x, y, box_type, 0]))
+
+            #remove vitims
+            for victim in hits[1]:
+                if victim.is_bomb() and victim not in exploding_bombs and victim not in destroyed_entities:
+                    #or explode victim bombs
+                    exploding_bombs.append(victim)
+                elif not victim.is_bomb() and victim not in destroyed_entities and not (victim.is_any_player() and victim.owner == bomb.owner):
+                    destroyed_entities.append(victim)
+
+                
+        ###################################do moves
+        movers = [entity for entity in result.entities if entity.is_any_player()]
+
+        for mover in movers:
+            player_moves = [move for move in moves if move.player == mover.owner]
+            if len(player_moves) == 0:
+                raise TypeError("A player had no move given!")
+
+            move = player_moves[0]
+
+            if move.move_type == BOMB_MOVE:
+                print (mover.explosion_range())
+                new_bombs.append(Entity([BOMB, move.player, mover.x, mover.y, COUNTDOWN, mover.explosion_range()]))
+
+            if (not contains_movement_blocker(result, move.x, move.y)):
+                mover.x = move.x
+                mover.y = move.y
+
+        ###################################clean up
+        for item in new_items:
+            result.entities.append(item)
+
+        for cell in cells_to_empty:
+            result.board[cell[1]][cell[0]] = EMPTY_CELL
+
+        for entity in destroyed_entities:
+            result.entities.remove(entity)
+            if (entity.is_bomb()):
+                player = [entity for entity in result.entities if entity.is_player(entity.owner)][0]
+                player.bomb_ready()
+
+        for bomb in new_bombs:
+            player = [entity for entity in result.entities if entity.is_player(bomb.owner)][0]
+            player.bomb_used()
+            result.entities.append(bomb)
+            
+        return result
+
+    def display(self):
+        display_board = [row[:] for row in self.board]
+        for entity in self.entities:
+            if entity.is_any_player():
+                display_board[entity.y][entity.x] = '@'
+            if entity.is_bomb():
+                display_board[entity.y][entity.x] = '!'
+            if entity.is_item():
+                display_board[entity.y][entity.x] = '#'
+        for row in display_board:
+            print(row)
+
+    def evaluate(self):
+        my_players = [entity for entity in self.entities if entity.is_me()]
+        if len(my_players) == 0:
+            return float('-inf')
+        all_players = [entity for entity in self.entities if entity.is_any_player()]
+        if len(all_players) == 1:
+            return float('inf')
+
+        return self.player_points[MY_ID]
+        
 
 class Entity():
     def __init__(self, parameters):
@@ -81,6 +221,8 @@ class Entity():
         self.y = parameters[3]
         self.param_1 = parameters[4]
         self.param_2 = parameters[5]
+        if self.is_any_player():
+            self.bomb_capacity = self.param_1
         
     def countdown(self):
         if self.is_bomb():
@@ -88,9 +230,53 @@ class Entity():
         else:
             raise TypeError("This is not a bomb.")
 
+    def tick_tock(self):
+        if self.is_bomb():
+            self.param_1 -= 1
+        else:
+            raise TypeError("This is not a bomb.")
+
+    def zero_countdown(self):
+        if self.is_bomb():
+            self.param_1 = 0
+        else:
+            raise TypeError("This is not a bomb.")
+
     def bombs_remaining(self):
         if self.is_player():
             return self.param_1
+        else:
+            raise TypeError("This is not a player.")
+
+    def bomb_ready(self):
+        if (self.is_any_player()):
+            self.param_1 += 1
+        else:
+            raise TypeError("This is not a player.")    
+
+    def bomb_used(self):
+        if (self.is_any_player()):
+            self.param_1 -= 1
+        else:
+            raise TypeError("This is not a player.")    
+
+
+    def bomb_capacity_upgrade(self):
+        if (self.is_any_player()):
+            self.param_1 += 1
+            self.bomb_capacity += 1
+        else:
+            raise TypeError("This is not a player.")        
+
+    def explosion_range(self):
+        if (self.is_bomb() or self.is_any_player()):
+            return self.param_2
+        else:
+            raise TypeError("This is not a bomb or player.")
+
+    def explosion_range_upgrade(self):
+        if (self.is_any_player()):
+            self.param_2 += 1
         else:
             raise TypeError("This is not a player.")
 
@@ -103,22 +289,19 @@ class Entity():
     def is_bomb(self):
         return self.entity_type == BOMB
 
-    def is_player(self):
+    def is_player(self, player_id):
+        return self.is_any_player() and self.owner == player_id
+
+    def is_any_player(self):
         return self.entity_type == PLAYER
 
     def is_item(self):
         return self.entity_type == ITEM
 
     def is_me(self):
-        return self.entity_type == PLAYER and self.owner == MY_ID
-    
-    def explosion_range(self):
-        if (self.is_bomb() or self.is_player()):
-            return self.param_2
-        else:
-            raise TypeError("This is not a bomb or player.")
+        return self.is_player(MY_ID)
 
-    def blockers_within_range(self, board):
+    def explosion_victims(self, board):
         return explosion_blockers(board, self.x, self.y, self.explosion_range())
 
     def distance_to(self, point_b):
@@ -141,5 +324,54 @@ while True:
     for entity in entities:
         if entity.is_me():
             me = entity
+
+    position = Position(board, entities)
             
     print(Move(BOMB_MOVE, 6, 5, MY_ID).get_string())
+
+    #test
+    position.display()
+    sequenced_moves = [[Move(BOMB_MOVE, 1, 0, 1)],
+                       [Move(BOMB_MOVE, 1, 1, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 1, 1)],
+                       [Move(MOVE_MOVE, 2, 1, 1)],
+                       [Move(BOMB_MOVE, 1, 1, 1)],
+                       [Move(BOMB_MOVE, 0, 1, 1)],
+                       [Move(MOVE_MOVE, 0, 2, 1)],
+                       [Move(MOVE_MOVE, 0, 3, 1)],
+                       [Move(MOVE_MOVE, 0, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 2, 2, 1)],
+                       [Move(MOVE_MOVE, 3, 2, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 4, 1, 1)],
+                       [Move(BOMB_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 1, 1)],
+                       [Move(MOVE_MOVE, 3, 0, 1)],
+                       [Move(MOVE_MOVE, 4, 0, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(BOMB_MOVE, 1, 3, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)],
+                       [Move(MOVE_MOVE, 1, 2, 1)]]
+
+    new_position = copy.deepcopy(position)
+    for moves in sequenced_moves:
+        new_position = new_position.move_result(moves)
+        new_position.display()
+        print ("---")
+    break

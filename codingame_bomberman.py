@@ -14,19 +14,19 @@ EXTRA_BOMB = 2
 def explosion_blockers(board, square_x, square_y, radius):
     box_squares = []
     for x in range(square_x+1, square_x+radius):
-        if contains_box(board, x, square_y):
+        if contains_blocker(board, x, square_y):
             box_squares.append((x, square_y))
             break
     for x in reversed(range(square_x-radius+1, square_x)):
-        if contains_box(board, x, square_y):
+        if contains_blocker(board, x, square_y):
             box_squares.append((x, square_y))
             break
     for y in range(square_y+1, square_y+radius):
-        if contains_box(board, square_x, y):
+        if contains_blocker(board, square_x, y):
             box_squares.append((square_x, y))
             break
     for y in reversed(range(square_y-radius+1, square_y)):
-        if contains_box(board, square_x, y):
+        if contains_blocker(board, square_x, y):
             box_squares.append((square_x, y))
             break
     return box_squares
