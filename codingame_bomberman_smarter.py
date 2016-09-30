@@ -89,7 +89,7 @@ def open_squares(position, x, y):
         current = frontier.pop(0)
         result.append(current)
         for neighbor in open_bordering_squares(position, current[0], current[1]):
-            if not neighbor in result:
+            if not neighbor in result and (not neighbor in frontier):
                 frontier.append(neighbor)
     return result
 
@@ -339,7 +339,7 @@ class Entity():
         return distance((self.x, self.y), point_b)
 
 def abstract_in_bomb(position, entity):
-    hits = explosion_hits(position, entity.x, entity.y)
+    hits = explosion_hits(position, entity.x, entity.y, entity.explosion_range())
     hits = hits[0] + [(item.x, item.y) for item in hits[1]]
     for hit in hits:
         position.board[hit[1]][hit[0]] = EMPTY_CELL
@@ -483,7 +483,7 @@ while True:
 
 
     #avoid death or make checkmate if possible
-    minimax_move = minimax(position, 3)
+    minimax_move = minimax(position, 2)
     print (minimax_move, file=sys.stderr)
     if minimax_move[0] == float('inf') or minimax_move[0] == float('-inf'):
         print (minimax_move[1].get_string())
@@ -506,10 +506,11 @@ while True:
         
         #account for the bomb i'm about to place to figure out where to go next
         abstracted_position = abstract_in_bomb(abstracted_position, Entity([1, 1, x, y, 8, me.explosion_range()]))
-        square_values = compute_square_values(abstracted_position)
+        squares_to_compute = open_squares(abstracted_position, me.x, me.y)
+        square_values = compute_square_values(abstracted_position, squares_to_compute)
         value_squares = squares_by_value(square_values)
         value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
-        next_maximum = first_unblocked_square(value_squares, abstracted_board)
+        next_maximum = first_unblocked_square(value_squares, abstracted_position.board)
 
         print ("BOMB " + str(next_maximum[1]) + " " + str(next_maximum[2]))
     else:
