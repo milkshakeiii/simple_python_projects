@@ -1,6 +1,5 @@
 import sys
 import math
-import copy
 
 WIDTH, HEIGHT, MY_ID = [int(i) for i in input().split()]
 
@@ -107,7 +106,9 @@ class Position():
                 self.player_points[entity.owner] = 0
 
     def move_result(self, moves):
-        result = copy.deepcopy(self)
+        board_copy = [row[:] for row in self.board]
+        entities_copy = [entity.copy() for entity in self.entities]
+        result = Position(board_copy, entities_copy)
 
         new_items = []
         cells_to_empty = []
@@ -228,6 +229,12 @@ class Entity():
         self.param_2 = parameters[5]
         if self.is_any_player():
             self.bomb_capacity = self.param_1
+
+    def copy(self):
+        copy = Entity([self.entity_type, self.owner, self.x, self.y, self.param_1, self.param_2])
+        if copy.is_any_player():
+            copy.bomb_capacity = self.bomb_capacity
+        return copy
         
     def countdown(self):
         if self.is_bomb():
@@ -312,35 +319,33 @@ class Entity():
     def distance_to(self, point_b):
         return distance((self.x, self.y), point_b)
 
+def possible_moves_for_player(position, player):
+    possible_moves = []
+    for direction in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]:
+        target = (player.x+direction[0], player.y+direction[1])
+        if not contains_movement_blocker(position, target[0], target[1]):
+            possible_moves.append(Move(MOVE_MOVE, target[0], target[1], player.owner))
+            if (player.bombs_remaining() > 0):
+                possible_moves.append(Move(BOMB_MOVE, target[0], target[1], player.owner))
+    if len(possible_moves) == 0:
+        possible_moves.append(Move(MOVE_MOVE, player.x, player.y, player.owner))
+    return possible_moves
+
 def possible_moves(position):
-    def possible_moves_for_player(player):
-        possible_moves = []
-        for direction in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]:
-            target = (player.x+direction[0], player.y+direction[1])
-            if not contains_movement_blocker(position, target[0], target[1]):
-                possible_moves.append(Move(MOVE_MOVE, target[0], target[1], player.owner))
-                if (player.bombs_remaining() > 0):
-                    possible_moves.append(Move(BOMB_MOVE, target[0], target[1], player.owner))
-        if len(possible_moves) == 0:
-            possible_moves.append(Move(MOVE_MOVE, player.x, player.y, player.owner))
-        return possible_moves
-    
     me = [entity for entity in position.entities if entity.is_me()][0]
-    my_possible_moves = possible_moves_for_player(me)
+    my_possible_moves = possible_moves_for_player(position, me)
     
     them = [entity for entity in position.entities if (not entity.is_me()) and entity.is_any_player()][0]
-    their_possible_moves = possible_moves_for_player(them)
+    their_possible_moves = possible_moves_for_player(positon, them)
 
     possible_moves = {}
     for move in my_possible_moves:
         possible_moves[move] = their_possible_moves
 
     return possible_moves
-
     
 #returns (evaluation, move)
 def minimax(position, depth):
-    print(depth)
     
     evaluation = position.evaluate()
     if depth == 0 or evaluation == float('-inf') or evaluation == float('inf'):
@@ -357,8 +362,23 @@ def minimax(position, depth):
         my_move_evaluations.append((min(evaluations), my_move))
     my_best_move = max(my_move_evaluations)
     return my_best_move
-        
-        
+
+def maximax(position, depth):
+    evaluation = position.evaluate()
+    if depth == 0 or evaluation == float('-inf') or evaluation == float('inf'):
+        return (evaluation, None)
+
+    my_move_evaluations = []
+    me = [entity for entity in position.entities if entity.is_me()][0]
+    them = [entity for entity in position.entities if (not entity.is_me()) and entity.is_any_player()][0]
+    my_possible_moves = possible_moves_for_player(position, me)
+    evaluations = []
+    for my_move in my_possible_moves:
+        result_position = position.move_result([my_move] + [Move(MOVE_MOVE, them.x, them.y, them.owner)])
+        evaluations.append((maximax(result_position, depth-1)[0], my_move))
+    my_best_move = max(evaluations)
+    return my_best_move
+
     
 
 # game loop
@@ -379,5 +399,5 @@ while True:
     position = Position(board, entities)
 
             
-    print(minimax(position, 3)[1].get_string())
+    print(maximax(position, 9)[1].get_string())
 
