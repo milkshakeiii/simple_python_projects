@@ -72,6 +72,27 @@ def contained_victims(position, x, y):
 def distance(a, b):
     return abs(a[0]-b[0]) + abs(a[1] - b[1])
 
+def open_bordering_squares(position, x, y):
+    result = []
+    for direction in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+        if not contains_movement_blocker(position, x+direction[0], y+direction[1]):
+            result.append((x+direction[0], y+direction[1]))
+    return result
+
+def open_squares(position, x, y):
+    if (contains_movement_blocker(position, x, y)):
+        return []
+    result = []
+    frontier = []
+    frontier.append((x, y))
+    while len(frontier) != 0:
+        current = frontier.pop(0)
+        result.append(current)
+        for neighbor in open_bordering_squares(position, current[0], current[1]):
+            if not neighbor in result:
+                frontier.append(neighbor)
+    return result
+
 class Move():
     def __init__(self, move_type, x, y, player):
         self.move_type = move_type
@@ -106,6 +127,7 @@ class Position():
                 self.player_points[entity.owner] = 0
 
     def move_result(self, moves):
+        
         board_copy = [row[:] for row in self.board]
         entities_copy = [entity.copy() for entity in self.entities]
         result = Position(board_copy, entities_copy)
@@ -193,7 +215,7 @@ class Position():
             player = [entity for entity in result.entities if entity.is_player(bomb.owner)][0]
             player.bomb_used()
             result.entities.append(bomb)
-            
+
         return result
 
     def display(self):
@@ -313,11 +335,67 @@ class Entity():
     def is_me(self):
         return self.is_player(MY_ID)
 
-    def explosion_victims(self, board):
-        return explosion_blockers(board, self.x, self.y, self.explosion_range())
-
     def distance_to(self, point_b):
         return distance((self.x, self.y), point_b)
+
+def abstract_in_bomb(position, entity):
+    hits = explosion_hits(position, entity.x, entity.y)
+    hits = hits[0] + [(item.x, item.y) for item in hits[1]]
+    for hit in hits:
+        position.board[hit[1]][hit[0]] = EMPTY_CELL
+    return position
+
+def abstractify_position(position):
+    
+    for entity in position.entities:
+        if entity.is_bomb():
+            position = abstract_in_bomb(position, entity)
+
+    return position
+
+def compute_square_values(position, squares):
+    square_values = [[-1 for i in range(WIDTH)] for i in range(HEIGHT)]
+
+    for (x, y) in squares:
+        square_values[y][x] = len(explosion_hits(position, x, y, me.explosion_range())[0])
+
+    return square_values
+
+#unused
+def find_maximums(square_values):
+    row_maxes = []
+    for i in range(HEIGHT):
+        row = square_values[i]
+        max_value = max(row)
+        for j in range(WIDTH):
+            cell = row[j]
+            if cell == max_value:
+                row_maxes.append((max_value, j, i))
+    true_max = max(row_maxes)[0]
+    true_maxes = []
+    for i in range(len(row_maxes)):
+        row_max = row_maxes[i]
+        if row_max[0] == true_max:
+            true_maxes.append(row_max)
+
+    return true_maxes
+
+#square value tuplets come in form (value, x, y)
+def squares_by_value(square_values):
+    value_squares = []
+    for i in range(HEIGHT):
+        for j in range(WIDTH):
+            value_squares.append((square_values[i][j], j, i))
+    return value_squares
+
+def first_unblocked_square(value_squares, abstracted_board):
+    nearest_maximum = value_squares[0]
+    i = 0
+    while (abstracted_board[nearest_maximum[2]][nearest_maximum[1]] != EMPTY_CELL):
+        i += 1
+        nearest_maximum = value_squares[i]
+    return nearest_maximum
+
 
 def possible_moves_for_player(position, player):
     possible_moves = []
@@ -336,7 +414,7 @@ def possible_moves(position):
     my_possible_moves = possible_moves_for_player(position, me)
     
     them = [entity for entity in position.entities if (not entity.is_me()) and entity.is_any_player()][0]
-    their_possible_moves = possible_moves_for_player(positon, them)
+    their_possible_moves = possible_moves_for_player(position, them)
 
     possible_moves = {}
     for move in my_possible_moves:
@@ -398,6 +476,44 @@ while True:
 
     position = Position(board, entities)
 
-            
-    print(maximax(position, 9)[1].get_string())
+    me = -1
+    for entity in entities:
+        if entity.is_me():
+            me = entity
+
+
+    #avoid death or make checkmate if possible
+    minimax_move = minimax(position, 3)
+    print (minimax_move, file=sys.stderr)
+    if minimax_move[0] == float('inf') or minimax_move[0] == float('-inf'):
+        print (minimax_move[1].get_string())
+        continue
+
+
+    #otherwise make a good move
+    
+    #account for bombs and find the square with the highest value
+    abstracted_position = abstractify_position(position)
+    squares_to_compute = open_squares(position, me.x, me.y)
+    square_values = compute_square_values(abstracted_position, squares_to_compute)
+    value_squares = squares_by_value(square_values)
+    value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
+
+    nearest_maximum = first_unblocked_square(value_squares, abstracted_position.board)
+
+    x, y = nearest_maximum[1], nearest_maximum[2]
+    if (me.x == x and me.y == y and me.bombs_remaining() > 0):
+        
+        #account for the bomb i'm about to place to figure out where to go next
+        abstracted_position = abstract_in_bomb(abstracted_position, Entity([1, 1, x, y, 8, me.explosion_range()]))
+        square_values = compute_square_values(abstracted_position)
+        value_squares = squares_by_value(square_values)
+        value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
+        next_maximum = first_unblocked_square(value_squares, abstracted_board)
+
+        print ("BOMB " + str(next_maximum[1]) + " " + str(next_maximum[2]))
+    else:
+        print ("MOVE " + str(x) + " " + str(y))
+
+
 

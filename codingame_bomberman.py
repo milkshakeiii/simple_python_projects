@@ -11,38 +11,62 @@ EMPTY_BOX = 0
 EXTRA_RANGE = 1
 EXTRA_BOMB = 2
 
-def explosion_blockers(board, square_x, square_y, radius):
+def explosion_hits(position, square_x, square_y, radius):
     box_squares = []
+    victims = []
     for x in range(square_x+1, square_x+radius):
-        if contains_blocker(board, x, square_y):
+        victims += contained_victims(position, x, square_y)
+        if contains_box(position, x, square_y):
             box_squares.append((x, square_y))
+        if contains_blocker(position, x, square_y):
             break
+                        
     for x in reversed(range(square_x-radius+1, square_x)):
-        if contains_blocker(board, x, square_y):
+        victims += contained_victims(position, x, square_y)
+        if contains_box(position, x, square_y):
             box_squares.append((x, square_y))
+        if contains_blocker(position, x, square_y):
             break
+                        
     for y in range(square_y+1, square_y+radius):
-        if contains_blocker(board, square_x, y):
+        victims += contained_victims(position, square_x, y)
+        if contains_box(position, square_x, y):
             box_squares.append((square_x, y))
+        if contains_blocker(position, square_x, y):
             break
+                        
     for y in reversed(range(square_y-radius+1, square_y)):
-        if contains_blocker(board, square_x, y):
+        victims += contained_victims(position, square_x, y)
+        if contains_box(position, square_x, y):
             box_squares.append((square_x, y))
+        if contains_blocker(position, square_x, y):
             break
-    return box_squares
 
-def contains_blocker(board, x, y):
-    result = False
-    if (x >= 0 and y >= 0 and x < WIDTH and y < HEIGHT and board[y][x] != EMPTY_CELL):
-        result = True
-#    print ((x, y, result))
-    return result
+    return (box_squares, victims)
+
+def contains_wall(postion, x, y):
+    return (x < 0 or y < 0 or x >= WIDTH or y >= HEIGHT or postion.board[y][x] == WALL)
+
+def contains_box(position, x, y):
+    return (not contains_wall(position, x, y)) and position.board[y][x] != EMPTY_CELL
+
+def contains_blocker(position, x, y):
+    non_player_victims = [victim for victim in contained_victims(position, x, y) if not victim.is_any_player()]
+    return contains_wall(position, x, y) or contains_box(position, x, y) or len(non_player_victims) > 0
+
+def contains_movement_blocker(position, x, y):
+    bombs = [victim for victim in contained_victims(position, x, y) if victim.is_bomb()]
+    return contains_wall(position, x, y) or contains_box(position, x, y) or len(bombs) > 0
+
+def contained_victims(position, x, y):
+    return [entity for entity in position.entities if entity.x == x and entity.y == y]
 
 def distance(a, b):
     return abs(a[0]-b[0]) + abs(a[1] - b[1])
 
-def shortest_path(board, a, b):
-    return "the results of a boring bfs...?"
+def open_squares(board, start):
+    
+    
 
 class Entity():
     def __init__(self, parameters):
@@ -105,7 +129,7 @@ def compute_square_values(board):
 
     for i in range(HEIGHT):
         for j in range(WIDTH):
-            square_values[i][j] = len(explosion_victims(abstracted_board, j, i, me.explosion_range()))
+            square_values[i][j] = len(explosion_blockers(abstracted_board, j, i, me.explosion_range()))
 
     return square_values
 
