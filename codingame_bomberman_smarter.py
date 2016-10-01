@@ -1,5 +1,7 @@
 import sys
 import math
+import heapq
+import time
 
 WIDTH, HEIGHT, MY_ID = [int(i) for i in input().split()]
 
@@ -11,6 +13,7 @@ PLAYER = 0
 
 EMPTY_CELL = '.'
 WALL = 'X'
+DEATH_CELL = 'Z'
 
 EMPTY_BOX = 0
 EXTRA_RANGE = 1
@@ -22,8 +25,11 @@ MOVE_MOVE = 1
 def explosion_hits(position, square_x, square_y, radius):
     box_squares = []
     victims = []
+    death_squares = [(square_x, square_y)]
     for x in range(square_x+1, square_x+radius):
         victims += contained_victims(position, x, square_y)
+        if not contains_wall(position, x, square_y):
+            death_squares.append((x, square_y))
         if contains_box(position, x, square_y):
             box_squares.append((x, square_y))
         if contains_blocker(position, x, square_y):
@@ -31,6 +37,8 @@ def explosion_hits(position, square_x, square_y, radius):
                         
     for x in reversed(range(square_x-radius+1, square_x)):
         victims += contained_victims(position, x, square_y)
+        if not contains_wall(position, x, square_y):
+            death_squares.append((x, square_y))
         if contains_box(position, x, square_y):
             box_squares.append((x, square_y))
         if contains_blocker(position, x, square_y):
@@ -38,22 +46,26 @@ def explosion_hits(position, square_x, square_y, radius):
                         
     for y in range(square_y+1, square_y+radius):
         victims += contained_victims(position, square_x, y)
+        if not contains_wall(position, square_x, y):
+            death_squares.append((square_x, y))
         if contains_box(position, square_x, y):
             box_squares.append((square_x, y))
         if contains_blocker(position, square_x, y):
             break
-                        
+        
     for y in reversed(range(square_y-radius+1, square_y)):
         victims += contained_victims(position, square_x, y)
+        if not contains_wall(position, square_x, y):
+            death_squares.append((square_x, y))
         if contains_box(position, square_x, y):
             box_squares.append((square_x, y))
         if contains_blocker(position, square_x, y):
             break
 
-    return (box_squares, victims)
+    return (box_squares, victims, death_squares)
 
 def contains_wall(postion, x, y):
-    return (x < 0 or y < 0 or x >= WIDTH or y >= HEIGHT or postion.board[y][x] == WALL)
+    return (x < 0 or y < 0 or x >= WIDTH or y >= HEIGHT or postion.board[y][x] == WALL or postion.board[y][x] == DEATH_CELL)
 
 def contains_box(position, x, y):
     return (not contains_wall(position, x, y)) and position.board[y][x] != EMPTY_CELL
@@ -74,7 +86,7 @@ def distance(a, b):
 
 def open_bordering_squares(position, x, y):
     result = []
-    for direction in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+    for direction in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0)]:
         if not contains_movement_blocker(position, x+direction[0], y+direction[1]):
             result.append((x+direction[0], y+direction[1]))
     return result
@@ -134,8 +146,19 @@ class Position():
 
         new_items = []
         cells_to_empty = []
+        cells_to_death = []
         destroyed_entities = []
         new_bombs = []
+
+        #clean up death cells
+        for i in range(len(result.board)):
+            row = result.board[i]
+            for j in range(len(row)):
+                cell = row[j]
+                if cell == DEATH_CELL:
+                    result.board[i][j] = EMPTY_CELL
+
+        
 
         #####################################collect items
         for entity in result.entities:
@@ -167,7 +190,8 @@ class Position():
                 x, y = box_spot
                 box_type = int(result.board[y][x])
                 #award points
-                result.player_points[bomb.owner] = result.player_points[bomb.owner] + 1
+                if bomb.owner in result.player_points:
+                    result.player_points[bomb.owner] = result.player_points[bomb.owner] + 1
                 cells_to_empty.append((x, y))
                 if (box_type != EMPTY_BOX):
                     new_items.append(Entity([ITEM, 0, x, y, box_type, 0]))
@@ -177,8 +201,26 @@ class Position():
                 if victim.is_bomb() and victim not in exploding_bombs and victim not in destroyed_entities:
                     #or explode victim bombs
                     exploding_bombs.append(victim)
-                elif not victim.is_bomb() and victim not in destroyed_entities and not (victim.is_any_player() and victim.owner == bomb.owner):
+                elif not victim.is_bomb() and victim not in destroyed_entities:
                     destroyed_entities.append(victim)
+
+        almost_exploding_bombs = [entity for entity in result.entities if (entity.is_bomb() and entity.countdown() == 1)]
+        hypothetically_destroyed_entities = []
+        while (len(almost_exploding_bombs) != 0):
+            bomb = almost_exploding_bombs.pop(0)
+            hypothetically_destroyed_entities.append(bomb)
+            hits = explosion_hits(result, bomb.x, bomb.y, bomb.explosion_range())
+            
+            for victim in hits[1]:
+                if victim.is_bomb() and victim not in almost_exploding_bombs and victim not in hypothetically_destroyed_entities:
+                    #hypothetically explode victim bombs
+                    almost_exploding_bombs.append(victim)
+                elif not victim.is_bomb() and victim not in hypothetically_destroyed_entities:
+                    hypothetically_destroyed_entities.append(victim)
+
+            #mark death squares
+            for death_square in hits[2]:
+                cells_to_death.append(death_square)
 
                 
         ###################################do moves
@@ -205,15 +247,22 @@ class Position():
         for cell in cells_to_empty:
             result.board[cell[1]][cell[0]] = EMPTY_CELL
 
+        for cell in cells_to_death:
+            result.board[cell[1]][cell[0]] = DEATH_CELL
+
         for entity in destroyed_entities:
             result.entities.remove(entity)
             if (entity.is_bomb()):
-                player = [entity for entity in result.entities if entity.is_player(entity.owner)][0]
-                player.bomb_ready()
+                players = [entity for entity in result.entities if entity.is_player(entity.owner)]
+                if (len(players) > 0):
+                    player = players[0]
+                    player.bomb_ready()
 
         for bomb in new_bombs:
-            player = [entity for entity in result.entities if entity.is_player(bomb.owner)][0]
-            player.bomb_used()
+            players = [entity for entity in result.entities if entity.is_player(bomb.owner)]
+            if len(players) > 0:
+                player = players[0]
+                player.bomb_used()
             result.entities.append(bomb)
 
         return result
@@ -345,13 +394,16 @@ def abstract_in_bomb(position, entity):
         position.board[hit[1]][hit[0]] = EMPTY_CELL
     return position
 
-def abstractify_position(position):
+def abstractified_position(position):
+    board_copy = [row[:] for row in position.board]
+    entities_copy = [entity.copy() for entity in position.entities]
+    result = Position(board_copy, entities_copy)
     
     for entity in position.entities:
         if entity.is_bomb():
-            position = abstract_in_bomb(position, entity)
+            abstract_in_bomb(result, entity)
 
-    return position
+    return result
 
 def compute_square_values(position, squares):
     square_values = [[-1 for i in range(WIDTH)] for i in range(HEIGHT)]
@@ -388,14 +440,6 @@ def squares_by_value(square_values):
             value_squares.append((square_values[i][j], j, i))
     return value_squares
 
-def first_unblocked_square(value_squares, abstracted_board):
-    nearest_maximum = value_squares[0]
-    i = 0
-    while (abstracted_board[nearest_maximum[2]][nearest_maximum[1]] != EMPTY_CELL):
-        i += 1
-        nearest_maximum = value_squares[i]
-    return nearest_maximum
-
 
 def possible_moves_for_player(position, player):
     possible_moves = []
@@ -422,12 +466,13 @@ def possible_moves(position):
 
     return possible_moves
     
-#returns (evaluation, move)
+#returns (evaluation, move, critical bool)
 def minimax(position, depth):
     
     evaluation = position.evaluate()
-    if depth == 0 or evaluation == float('-inf') or evaluation == float('inf'):
-        return (evaluation, None)
+    end_state = (evaluation == float('-inf') or evaluation == float('inf'))
+    if depth == 0 or end_state:
+        return (evaluation, None, end_state)
 
     my_move_evaluations = []
     these_possible_moves = possible_moves(position)
@@ -436,31 +481,110 @@ def minimax(position, depth):
         evaluations = []
         for their_move in their_moves:
             result_position = position.move_result([my_move] + [their_move])
-            evaluations.append(minimax(result_position, depth-1)[0])
-        my_move_evaluations.append((min(evaluations), my_move))
+            child = minimax(result_position, depth-1)
+            evaluation = child[0]
+            critical = child[2]
+            if (critical):
+                end_state = True
+            evaluations.append(evaluation)
+        my_move_evaluations.append((min(evaluations), my_move, end_state))
     my_best_move = max(my_move_evaluations)
     return my_best_move
 
 def maximax(position, depth):
     evaluation = position.evaluate()
-    if depth == 0 or evaluation == float('-inf') or evaluation == float('inf'):
-        return (evaluation, None)
+    end_state = (evaluation == float('-inf') or evaluation == float('inf'))
+    if depth == 0 or end_state:
+        return (evaluation, None, end_state)
 
     my_move_evaluations = []
     me = [entity for entity in position.entities if entity.is_me()][0]
-    them = [entity for entity in position.entities if (not entity.is_me()) and entity.is_any_player()][0]
+    thems = [entity for entity in position.entities if (not entity.is_me()) and entity.is_any_player()]
+    dummy_moves = [Move(MOVE_MOVE, them.x, them.y, them.owner) for them in thems]
     my_possible_moves = possible_moves_for_player(position, me)
     evaluations = []
     for my_move in my_possible_moves:
-        result_position = position.move_result([my_move] + [Move(MOVE_MOVE, them.x, them.y, them.owner)])
-        evaluations.append((maximax(result_position, depth-1)[0], my_move))
+        result_position = position.move_result([my_move] + dummy_moves)
+        child = maximax(result_position, depth-1)
+        critical = child[2]
+        if (critical):
+            end_state = True
+        evaluations.append((child[0], my_move, end_state))
     my_best_move = max(evaluations)
     return my_best_move
 
+
+
+def psychic_pathfinding(the_future, a):
     
+    first_steps = open_bordering_squares(the_future[1], a[0], a[1])
+    frontier = [(step[0], step[1], 1, [step]) for step in first_steps]
+    full_paths = []
+
+    while len(frontier) != 0:
+        #x, y, frame, path
+        current = frontier.pop()
+
+        next_frame = current[2]+1
+        if (next_frame >= len(the_future)):
+            full_paths.append(current)
+            continue
+
+        next_steps = open_bordering_squares(the_future[next_frame], current[0], current[1])
+        
+        for next_step in next_steps:
+            frontier.append((next_step[0], next_step[1], next_frame, current[3] + [next_step]))
+
+    
+
+    #x, y, frame, path      
+    return full_paths
+
+
+
+def sorted_paths(paths, destination):
+    def arrival_index(path):
+        arrival_index = float('inf')
+        if (destination in path[3]):
+            arrival_index = path[3].index(destination)
+        return arrival_index
+
+    paths = [(arrival_index(path), distance((path[0], path[1]), destination)) + path for path in paths]
+    paths.sort()
+    return paths
+
+
+#square value tuplets come in form (value, x, y)
+def first_nonsuicidal_square(position, value_squares, me):
+    
+    nonsuicidal_square = value_squares[0]
+    suicidal = True
+    i = 0
+    while (suicidal):
+        nonsuicidal_square = value_squares[i]
+        open_squares_here = open_squares(position, nonsuicidal_square[1], nonsuicidal_square[2])
+        death_squares = explosion_hits(position, nonsuicidal_square[1], nonsuicidal_square[2], me.explosion_range())[2]
+        suicidal = False
+        for square in death_squares:
+            if square in open_squares_here:
+                open_squares_here.remove(square)
+        if len(open_squares_here) == 0:
+            suicidal = True
+
+        i += 1
+        if i == len(value_squares):
+            return (-1, -1, -1)
+
+    return nonsuicidal_square
+
+        
+    
+    
+
 
 # game loop
 while True:
+    ################SETUP#############
     board = []
     for i in range(HEIGHT):
         row = list(input())
@@ -474,47 +598,121 @@ while True:
         entities.append(Entity(parameters))
 
 
+#    print(time.time())
     position = Position(board, entities)
 
+    
     me = -1
     for entity in entities:
         if entity.is_me():
             me = entity
 
 
-    #avoid death or make checkmate if possible
-    minimax_move = minimax(position, 2)
-    print (minimax_move, file=sys.stderr)
-    if minimax_move[0] == float('inf') or minimax_move[0] == float('-inf'):
-        print (minimax_move[1].get_string())
-        continue
+
+    #####PREDICT THE FUTURE############
+    vision_depth = 6
+
+    the_future = [position]
+    dummy_moves = [Move(MOVE_MOVE, them.x, them.y, them.owner) for them in position.entities if them.is_any_player()]
+    for i in range(vision_depth):
+        the_future.append(the_future[-1].move_result(dummy_moves))
 
 
-    #otherwise make a good move
     
-    #account for bombs and find the square with the highest value
-    abstracted_position = abstractify_position(position)
-    squares_to_compute = open_squares(position, me.x, me.y)
+    #######DIRECTIONLESS PATHFINDING###
+    all_paths = psychic_pathfinding(the_future, (me.x, me.y))
+    reachable_squares = set([(path[0], path[1]) for path in all_paths])
+
+
+
+
+
+    #####FIND A GOOD DESTINATION#######
+    abstracted_position = abstractified_position(position)
+    squares_to_compute = reachable_squares
     square_values = compute_square_values(abstracted_position, squares_to_compute)
     value_squares = squares_by_value(square_values)
     value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
+    nearest_maximum = first_nonsuicidal_square(position, value_squares, me)
+    destination = nearest_maximum[1], nearest_maximum[2]
 
-    nearest_maximum = first_unblocked_square(value_squares, abstracted_position.board)
 
-    x, y = nearest_maximum[1], nearest_maximum[2]
-    if (me.x == x and me.y == y and me.bombs_remaining() > 0):
-        
-        #account for the bomb i'm about to place to figure out where to go next
-        abstracted_position = abstract_in_bomb(abstracted_position, Entity([1, 1, x, y, 8, me.explosion_range()]))
-        squares_to_compute = open_squares(abstracted_position, me.x, me.y)
+
+
+    #####UPDATE THE FUTURE FOR BOMBING##########
+    vision_depth = 6
+
+    bombing = ((me.x, me.y) == destination and me.bombs_remaining() > 0)
+    
+    the_future = [position]
+    my_dummy_move = Move(MOVE_MOVE, me.x, me.y, MY_ID)
+    my_first_move = my_dummy_move
+    if (bombing):
+        my_first_move = Move(BOMB_MOVE, me.x, me.y, MY_ID)
+    dummy_moves = [Move(MOVE_MOVE, them.x, them.y, them.owner) for them in position.entities if them.is_any_player() and not them.is_me()]
+    for i in range(vision_depth):
+        together_dummy_moves = dummy_moves + [my_dummy_move]
+        if i == 0:
+            together_dummy_moves = dummy_moves + [my_first_move]
+        the_future.append(the_future[-1].move_result(together_dummy_moves))
+
+
+
+
+    #####UPDATE MY DESTINATION FOR BOMBINB######
+    if bombing:
+        abstract_in_bomb(abstracted_position, Entity([1, MY_ID, me.x, me.y, 8, me.explosion_range()]))
+        squares_to_compute = reachable_squares
         square_values = compute_square_values(abstracted_position, squares_to_compute)
         value_squares = squares_by_value(square_values)
         value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
-        next_maximum = first_unblocked_square(value_squares, abstracted_position.board)
+        nearest_maximum = first_nonsuicidal_square(the_future[1], value_squares, me)
+        destination = nearest_maximum[1], nearest_maximum[2]
 
-        print ("BOMB " + str(next_maximum[1]) + " " + str(next_maximum[2]))
+    if (destination == (-1, -1)):
+        bombing = False
+        destination = (value_squares[0][1], value_squares[0][2])
+
+
+
+    #############FIND THE PATH#########
+    #arrival index, distance, x, y, frame, path
+    all_paths = sorted_paths(all_paths, destination)
+    
+    if (len(all_paths)) == 0:
+        print ("We're doomed.", file=sys.stderr)
+        print(Move(BOMB_MOVE, 6, 4, MY_ID).get_string())
+        continue
+
+    earliest_bomb = 0
+    for i in range(len(the_future)):
+        frame = the_future[i]
+        future_me = -1
+        for entity in frame.entities:
+            if entity.is_me():
+                future_me = entity
+        if (me.bombs_remaining() > 0):
+            earliest_bombs = i
+            break
+
+    next_square = all_paths[0][5][0]
+    for path_tuple in all_paths:
+        if path_tuple[0] >= earliest_bomb:
+            next_step = path_tuple[5][0]
+            break
+    
+    if bombing:
+        print(Move(BOMB_MOVE, next_square[0], next_square[1], MY_ID).get_string())
     else:
-        print ("MOVE " + str(x) + " " + str(y))
+        print(Move(MOVE_MOVE, next_square[0], next_square[1], MY_ID).get_string())
 
 
+'''    
+    #avoid death
+    maximax_move = maximax(position, 16)
+    print (maximax_move, file=sys.stderr)
+    if maximax_move[2]:
+        print (maximax_move[1].get_string())
+        continue
 
+'''
