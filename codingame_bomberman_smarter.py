@@ -137,8 +137,12 @@ class Position():
         for entity in entities:
             if entity.is_any_player():
                 self.player_points[entity.owner] = 0
+        
+        self.explosion_board = [[False for cell in row] for row in self.board]
+        
 
-    def move_result(self, moves):
+
+    def move_result(self, moves, skip_tick = False):
         
         board_copy = [row[:] for row in self.board]
         entities_copy = [entity.copy() for entity in self.entities]
@@ -146,7 +150,6 @@ class Position():
 
         new_items = []
         cells_to_empty = []
-        cells_to_death = []
         destroyed_entities = []
         new_bombs = []
 
@@ -174,8 +177,12 @@ class Position():
         
         ####################################do bombs
         for entity in result.entities:
-            if entity.is_bomb():
+            if entity.is_bomb() and not skip_tick:
                 entity.tick_tock()
+
+        #mark no-entry death squares and elimination explosion squares
+        self.mark_death_squares()
+        self.mark_explosions()
 
         exploding_bombs = [entity for entity in result.entities if (entity.is_bomb() and entity.countdown() == 0)]
         #while there are still bombs left to explode
@@ -204,23 +211,7 @@ class Position():
                 elif not victim.is_bomb() and victim not in destroyed_entities:
                     destroyed_entities.append(victim)
 
-        almost_exploding_bombs = [entity for entity in result.entities if (entity.is_bomb() and entity.countdown() == 1)]
-        hypothetically_destroyed_entities = []
-        while (len(almost_exploding_bombs) != 0):
-            bomb = almost_exploding_bombs.pop(0)
-            hypothetically_destroyed_entities.append(bomb)
-            hits = explosion_hits(result, bomb.x, bomb.y, bomb.explosion_range())
-            
-            for victim in hits[1]:
-                if victim.is_bomb() and victim not in almost_exploding_bombs and victim not in hypothetically_destroyed_entities:
-                    #hypothetically explode victim bombs
-                    almost_exploding_bombs.append(victim)
-                elif not victim.is_bomb() and victim not in hypothetically_destroyed_entities:
-                    hypothetically_destroyed_entities.append(victim)
-
-            #mark death squares
-            for death_square in hits[2]:
-                cells_to_death.append(death_square)
+        
 
                 
         ###################################do moves
@@ -240,15 +231,17 @@ class Position():
                 mover.x = move.x
                 mover.y = move.y
 
+
+
+
+                
+
         ###################################clean up
         for item in new_items:
             result.entities.append(item)
 
         for cell in cells_to_empty:
             result.board[cell[1]][cell[0]] = EMPTY_CELL
-
-        for cell in cells_to_death:
-            result.board[cell[1]][cell[0]] = DEATH_CELL
 
         for entity in destroyed_entities:
             result.entities.remove(entity)
@@ -265,7 +258,58 @@ class Position():
                 player.bomb_used()
             result.entities.append(bomb)
 
+
+        
         return result
+
+    def mark_death_squares(self):
+        cells_to_death = []
+        
+        almost_exploding_bombs = [entity for entity in self.entities if (entity.is_bomb() and entity.countdown() == 2)]
+        hypothetically_destroyed_entities = []
+        while (len(almost_exploding_bombs) != 0):
+            bomb = almost_exploding_bombs.pop(0)
+            hypothetically_destroyed_entities.append(bomb)
+            hits = explosion_hits(self, bomb.x, bomb.y, bomb.explosion_range())
+            
+            for victim in hits[1]:
+                if victim.is_bomb() and victim not in almost_exploding_bombs and victim not in hypothetically_destroyed_entities:
+                    #hypothetically explode victim bombs
+                    almost_exploding_bombs.append(victim)
+                elif not victim.is_bomb() and victim not in hypothetically_destroyed_entities:
+                    hypothetically_destroyed_entities.append(victim)
+
+            #mark death squares
+            for death_square in hits[2]:
+                cells_to_death.append(death_square)
+
+        for cell in cells_to_death:
+            self.board[cell[1]][cell[0]] = DEATH_CELL
+
+    def mark_explosions(self):
+        cells_to_explode = []
+        
+        exploding_bombs = [entity for entity in self.entities if (entity.is_bomb() and entity.countdown() == 1)]
+        destroyed_entities = []
+        while (len(exploding_bombs) != 0):
+            bomb = exploding_bombs.pop(0)
+            destroyed_entities.append(bomb)
+            hits = explosion_hits(self, bomb.x, bomb.y, bomb.explosion_range())
+            
+            for victim in hits[1]:
+                if victim.is_bomb() and victim not in exploding_bombs and victim not in destroyed_entities:
+                    exploding_bombs.append(victim)
+                elif not victim.is_bomb() and victim not in destroyed_entities:
+                    destroyed_entities.append(victim)
+
+            #mark death squares
+            for death_square in hits[2]:
+                cells_to_explode.append(death_square)
+
+        for cell in cells_to_explode:
+            self.explosion_board[cell[1]][cell[0]] = True
+
+            
 
     def display(self):
         display_board = [row[:] for row in self.board]
@@ -276,6 +320,12 @@ class Position():
                 display_board[entity.y][entity.x] = '!'
             if entity.is_item():
                 display_board[entity.y][entity.x] = '#'
+        for i in range(len(self.explosion_board)):
+            row = self.explosion_board[i]
+            for j in range(len(row)):
+                if (row[j]):
+                    display_board[i][j] = '%'
+                
         for row in display_board:
             print(row)
 
@@ -399,7 +449,7 @@ def abstractified_position(position):
     entities_copy = [entity.copy() for entity in position.entities]
     result = Position(board_copy, entities_copy)
     
-    for entity in position.entities:
+    for entity in result.entities:
         if entity.is_bomb():
             abstract_in_bomb(result, entity)
 
@@ -491,11 +541,13 @@ def minimax(position, depth):
     my_best_move = max(my_move_evaluations)
     return my_best_move
 
+
+#evaluation, this move
 def maximax(position, depth):
     evaluation = position.evaluate()
     end_state = (evaluation == float('-inf') or evaluation == float('inf'))
     if depth == 0 or end_state:
-        return (evaluation, None, end_state)
+        return (evaluation, None)
 
     my_move_evaluations = []
     me = [entity for entity in position.entities if entity.is_me()][0]
@@ -506,10 +558,7 @@ def maximax(position, depth):
     for my_move in my_possible_moves:
         result_position = position.move_result([my_move] + dummy_moves)
         child = maximax(result_position, depth-1)
-        critical = child[2]
-        if (critical):
-            end_state = True
-        evaluations.append((child[0], my_move, end_state))
+        evaluations.append((child[0], my_move))
     my_best_move = max(evaluations)
     return my_best_move
 
@@ -517,17 +566,22 @@ def maximax(position, depth):
 
 def psychic_pathfinding(the_future, a):
     
-    first_steps = open_bordering_squares(the_future[1], a[0], a[1])
-    frontier = [(step[0], step[1], 1, [step]) for step in first_steps]
+    first_steps = open_bordering_squares(the_future[0], a[0], a[1])
+    frontier = [(step[0], step[1], 0, [step]) for step in first_steps]
     full_paths = []
 
     while len(frontier) != 0:
         #x, y, frame, path
         current = frontier.pop()
 
+
+
         next_frame = current[2]+1
         if (next_frame >= len(the_future)):
             full_paths.append(current)
+            continue
+
+        if the_future[next_frame].explosion_board[current[1]][current[0]]:
             continue
 
         next_steps = open_bordering_squares(the_future[next_frame], current[0], current[1])
@@ -560,30 +614,75 @@ def first_nonsuicidal_square(position, value_squares, me):
     nonsuicidal_square = value_squares[0]
     suicidal = True
     i = 0
-    while (suicidal):
-        nonsuicidal_square = value_squares[i]
-        open_squares_here = open_squares(position, nonsuicidal_square[1], nonsuicidal_square[2])
-        death_squares = explosion_hits(position, nonsuicidal_square[1], nonsuicidal_square[2], me.explosion_range())[2]
-        suicidal = False
-        for square in death_squares:
-            if square in open_squares_here:
-                open_squares_here.remove(square)
-        if len(open_squares_here) == 0:
-            suicidal = True
-
+    while (square_is_suicidal(position, nonsuicidal_square[1], nonsuicidal_square[2], me)):
         i += 1
         if i == len(value_squares):
-            return (-1, -1, -1)
+            raise TypeError("All squares are suicidal!")
+        nonsuicidal_square = value_squares[i]
+        
 
     return nonsuicidal_square
 
-        
-    
+def square_is_suicidal(position, x, y, me):
+    open_squares_here = open_squares(position, x, y)
+    if len(open_squares_here) == 0:
+        return False
+    death_squares = explosion_hits(position, x, y, me.explosion_range())[2]
+    suicidal = False
+    for square in death_squares:
+        if square in open_squares_here:
+            open_squares_here.remove(square)
+    if len(open_squares_here) == 0:
+        suicidal = True
+    return suicidal
     
 
+def good_destination(position, reachable_squares, me):
+    abstracted_position = abstractified_position(position)
+    square_values = compute_square_values(abstracted_position, reachable_squares)
+    value_squares = squares_by_value(square_values)
+    value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2])))) 
+    nearest_maximum = first_nonsuicidal_square(position, value_squares, me)
+    destination = nearest_maximum[1], nearest_maximum[2]
+    return destination
+
+
+def select_path(the_future, all_paths, destination):
+
+    #arrival index, distance, x, y, frame, path
+    all_paths = sorted_paths(all_paths, destination)
+
+    earliest_bomb = 0
+    for i in range(len(the_future)):
+        frame = the_future[i]
+        future_me = -1
+        for entity in frame.entities:
+            if entity.is_me():
+                future_me = entity
+        if (future_me == -1):
+            earliest_bombs = len(the_future)
+            break
+        if (future_me.bombs_remaining() > 0):
+            earliest_bombs = i
+            break
+
+    next_square = all_paths[0][5][0]
+    for path_tuple in all_paths:
+        if path_tuple[0] >= earliest_bomb:
+            next_square = path_tuple[5][0]
+            break
+
+    return next_square
 
 # game loop
+global_player_points = {}
 while True:
+##
+#    print(time.time())
+##
+
+
+    
     ################SETUP#############
     board = []
     for i in range(HEIGHT):
@@ -600,7 +699,16 @@ while True:
 
 #    print(time.time())
     position = Position(board, entities)
+    dummy_moves = [Move(MOVE_MOVE, them.x, them.y, them.owner) for them in position.entities if them.is_any_player()]
+    position = position.move_result(dummy_moves, skip_tick = True)
 
+    point_counter = position.move_result(dummy_moves)
+    if global_player_points == {}:
+        for key in point_counter.player_points.keys():
+            global_player_points[key] = 0
+    for key in point_counter.player_points.keys():
+        global_player_points[key] = global_player_points[key] + point_counter.player_points[key]
+    
     
     me = -1
     for entity in entities:
@@ -610,7 +718,7 @@ while True:
 
 
     #####PREDICT THE FUTURE############
-    vision_depth = 6
+    vision_depth = 5
 
     the_future = [position]
     dummy_moves = [Move(MOVE_MOVE, them.x, them.y, them.owner) for them in position.entities if them.is_any_player()]
@@ -621,34 +729,32 @@ while True:
     
     #######DIRECTIONLESS PATHFINDING###
     all_paths = psychic_pathfinding(the_future, (me.x, me.y))
+    if (len(all_paths)) == 0:
+        print ("We're doomed.", file=sys.stderr)
+        print(Move(BOMB_MOVE, 6, 4, MY_ID).get_string())
+        continue
     reachable_squares = set([(path[0], path[1]) for path in all_paths])
 
 
 
-
-
     #####FIND A GOOD DESTINATION#######
-    abstracted_position = abstractified_position(position)
-    squares_to_compute = reachable_squares
-    square_values = compute_square_values(abstracted_position, squares_to_compute)
-    value_squares = squares_by_value(square_values)
-    value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
-    nearest_maximum = first_nonsuicidal_square(position, value_squares, me)
-    destination = nearest_maximum[1], nearest_maximum[2]
+    destination = good_destination(position, reachable_squares, me)
+    
 
+
+    #############FIND THE PATH#########
+    next_square = select_path(the_future, all_paths, destination)
 
 
 
     #####UPDATE THE FUTURE FOR BOMBING##########
-    vision_depth = 6
-
     bombing = ((me.x, me.y) == destination and me.bombs_remaining() > 0)
     
     the_future = [position]
-    my_dummy_move = Move(MOVE_MOVE, me.x, me.y, MY_ID)
+    my_dummy_move = Move(MOVE_MOVE, next_square[0], next_square[1], MY_ID)
     my_first_move = my_dummy_move
     if (bombing):
-        my_first_move = Move(BOMB_MOVE, me.x, me.y, MY_ID)
+        my_first_move = Move(BOMB_MOVE, next_square[0], next_square[1], MY_ID)
     dummy_moves = [Move(MOVE_MOVE, them.x, them.y, them.owner) for them in position.entities if them.is_any_player() and not them.is_me()]
     for i in range(vision_depth):
         together_dummy_moves = dummy_moves + [my_dummy_move]
@@ -659,60 +765,58 @@ while True:
 
 
 
-    #####UPDATE MY DESTINATION FOR BOMBINB######
+    #####FIND NEW DESTINATION AFTER BOMBING######
+        #but don't bomb if we see trouble
     if bombing:
-        abstract_in_bomb(abstracted_position, Entity([1, MY_ID, me.x, me.y, 8, me.explosion_range()]))
-        squares_to_compute = reachable_squares
-        square_values = compute_square_values(abstracted_position, squares_to_compute)
-        value_squares = squares_by_value(square_values)
-        value_squares.sort(key=lambda maximum: (-maximum[0], me.distance_to((maximum[1], maximum[2]))))
-        nearest_maximum = first_nonsuicidal_square(the_future[1], value_squares, me)
-        destination = nearest_maximum[1], nearest_maximum[2]
+        all_paths = psychic_pathfinding(the_future, (me.x, me.y))
+        if len(all_paths) == 0:
+            print ("Careful of the future!", file=sys.stderr)
+            bombing = False
+        else:
+            reachable_squares = set([(path[0], path[1]) for path in all_paths])
+            destination = good_destination(the_future[1], reachable_squares, me)
+            next_square = select_path(the_future, all_paths, destination)
+            if square_is_suicidal(the_future[1], next_square[0], next_square[1], me):
+                print ("Careful of small rooms!", file=sys.stderr)
+                bombing = False
+        
+        
+        
+        
 
-    if (destination == (-1, -1)):
+
+
+
+
+    final_move = None
+
+    #stop dropping bombs if i'm going to win on time
+    sorted_points = [point for point in reversed(sorted(global_player_points.values()))]
+    remaining_boxes = 0
+    for row in position.board:
+        for cell in row:
+            if cell in [str(box) for box in [EMPTY_BOX, EXTRA_BOMB, EXTRA_RANGE]]:
+                remaining_boxes += 1
+    if len(sorted_points) > 1 and sorted_points[0] == global_player_points[MY_ID] and abs(sorted_points[0] - sorted_points[1]) > remaining_boxes:
+        print("Dance dance dance", file=sys.stderr)
         bombing = False
-        destination = (value_squares[0][1], value_squares[0][2])
-
-
-
-    #############FIND THE PATH#########
-    #arrival index, distance, x, y, frame, path
-    all_paths = sorted_paths(all_paths, destination)
     
-    if (len(all_paths)) == 0:
-        print ("We're doomed.", file=sys.stderr)
-        print(Move(BOMB_MOVE, 6, 4, MY_ID).get_string())
-        continue
-
-    earliest_bomb = 0
-    for i in range(len(the_future)):
-        frame = the_future[i]
-        future_me = -1
-        for entity in frame.entities:
-            if entity.is_me():
-                future_me = entity
-        if (me.bombs_remaining() > 0):
-            earliest_bombs = i
-            break
-
-    next_square = all_paths[0][5][0]
-    for path_tuple in all_paths:
-        if path_tuple[0] >= earliest_bomb:
-            next_step = path_tuple[5][0]
-            break
     
     if bombing:
-        print(Move(BOMB_MOVE, next_square[0], next_square[1], MY_ID).get_string())
+        final_move = Move(BOMB_MOVE, next_square[0], next_square[1], MY_ID)
     else:
-        print(Move(MOVE_MOVE, next_square[0], next_square[1], MY_ID).get_string())
+        final_move = Move(MOVE_MOVE, next_square[0], next_square[1], MY_ID)
 
 
-'''    
-    #avoid death
-    maximax_move = maximax(position, 16)
-    print (maximax_move, file=sys.stderr)
-    if maximax_move[2]:
-        print (maximax_move[1].get_string())
-        continue
 
-'''
+    print (final_move.get_string())
+
+
+
+##
+#    print(time.time())
+##
+
+
+    
+
