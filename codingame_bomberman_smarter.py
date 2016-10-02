@@ -14,6 +14,10 @@ PLAYER = 0
 EMPTY_CELL = '.'
 WALL = 'X'
 DEATH_CELL = 'Z'
+DEATH_CELL_WAS_BOX0 = 'z'
+DEATH_CELL_WAS_BOX1 = 'Y'
+DEATH_CELL_WAS_BOX2 = 'y'
+DEATH_CELLS = [DEATH_CELL, DEATH_CELL_WAS_BOX0, DEATH_CELL_WAS_BOX1, DEATH_CELL_WAS_BOX2]
 
 EMPTY_BOX = 0
 EXTRA_RANGE = 1
@@ -65,7 +69,7 @@ def explosion_hits(position, square_x, square_y, radius):
     return (box_squares, victims, death_squares)
 
 def contains_wall(postion, x, y):
-    return (x < 0 or y < 0 or x >= WIDTH or y >= HEIGHT or postion.board[y][x] == WALL or postion.board[y][x] == DEATH_CELL)
+    return (x < 0 or y < 0 or x >= WIDTH or y >= HEIGHT or postion.board[y][x] == WALL or postion.board[y][x] in DEATH_CELLS)
 
 def contains_box(position, x, y):
     return (not contains_wall(position, x, y)) and position.board[y][x] != EMPTY_CELL
@@ -160,6 +164,12 @@ class Position():
                 cell = row[j]
                 if cell == DEATH_CELL:
                     result.board[i][j] = EMPTY_CELL
+                if cell == DEATH_CELL_WAS_BOX0:
+                    result.board[i][j] = EMPTY_BOX
+                if cell == DEATH_CELL_WAS_BOX1:
+                    result.board[i][j] = EXTRA_RANGE
+                if cell == DEATH_CELL_WAS_BOX2:
+                    result.board[i][j] = EXTRA_BOMB
 
         
 
@@ -181,8 +191,8 @@ class Position():
                 entity.tick_tock()
 
         #mark no-entry death squares and elimination explosion squares
-        self.mark_death_squares()
-        self.mark_explosions()
+        result.mark_death_squares()
+        result.mark_explosions()
 
         exploding_bombs = [entity for entity in result.entities if (entity.is_bomb() and entity.countdown() == 0)]
         #while there are still bombs left to explode
@@ -284,7 +294,14 @@ class Position():
                 cells_to_death.append(death_square)
 
         for cell in cells_to_death:
-            self.board[cell[1]][cell[0]] = DEATH_CELL
+            if cell == EMPTY_CELL:
+                self.board[cell[1]][cell[0]] = DEATH_CELL
+            if cell == EMPTY_BOX:
+                self.board[cell[1]][cell[0]] = DEATH_CELL_WAS_BOX0
+            if cell == EXTRA_RANGE:
+                self.board[cell[1]][cell[0]] = DEATH_CELL_WAS_BOX1
+            if cell == EXTRA_BOMB:
+                self.board[cell[1]][cell[0]] = DEAHT_CELL_WAS_BOX2
 
     def mark_explosions(self):
         cells_to_explode = []
@@ -575,6 +592,16 @@ def psychic_pathfinding(the_future, a):
         current = frontier.pop()
 
 
+        #######NEW SUNDAY
+        current_frame = the_future[current[2]]
+        items = [item for item in current_frame.entities if item.is_item() and item.x == current[0] and item.y == current[1]]
+        if len(items) > 0:
+            for frame in the_future[current[2]:]:
+                items = [item for item in frame.entities if item.is_item() and item.x == current[0] and item.y == current[1]]
+                if len(items) > 0:
+                    frame.entities.remove(items[0])
+        #######
+    
 
         next_frame = current[2]+1
         if (next_frame >= len(the_future)):
@@ -712,6 +739,8 @@ while True:
     dummy_moves = [Move(MOVE_MOVE, them.x, them.y, them.owner) for them in position.entities if them.is_any_player()]
     position = position.move_result(dummy_moves, skip_tick = True)
 
+
+    #ugly point counting
     point_counter = position.move_result(dummy_moves)
     if global_player_points == {}:
         for key in point_counter.player_points.keys():
