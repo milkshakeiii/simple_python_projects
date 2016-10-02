@@ -171,7 +171,30 @@ class Position():
                 if cell == DEATH_CELL_WAS_BOX2:
                     result.board[i][j] = EXTRA_BOMB
 
-        
+        ###################################do moves from last round
+        movers = [entity for entity in result.entities if entity.is_any_player()]
+
+        for mover in movers:
+            player_moves = [move for move in moves if move.player == mover.owner]
+            if len(player_moves) == 0:
+                raise TypeError("A player had no move given!")
+
+            move = player_moves[0]
+
+            if move.move_type == BOMB_MOVE:
+                new_bombs.append(Entity([BOMB, move.player, mover.x, mover.y, COUNTDOWN, mover.explosion_range()]))
+
+            if (not contains_movement_blocker(result, move.x, move.y)):
+                mover.x = move.x
+                mover.y = move.y
+
+        for bomb in new_bombs:
+            players = [entity for entity in result.entities if entity.is_player(bomb.owner)]
+            if len(players) > 0:
+                player = players[0]
+                player.bomb_used()
+            result.entities.append(bomb)
+ 
 
         #####################################collect items
         for entity in result.entities:
@@ -224,22 +247,6 @@ class Position():
         
 
                 
-        ###################################do moves
-        movers = [entity for entity in result.entities if entity.is_any_player()]
-
-        for mover in movers:
-            player_moves = [move for move in moves if move.player == mover.owner]
-            if len(player_moves) == 0:
-                raise TypeError("A player had no move given!")
-
-            move = player_moves[0]
-
-            if move.move_type == BOMB_MOVE:
-                new_bombs.append(Entity([BOMB, move.player, mover.x, mover.y, COUNTDOWN, mover.explosion_range()]))
-
-            if (not contains_movement_blocker(result, move.x, move.y)):
-                mover.x = move.x
-                mover.y = move.y
 
 
 
@@ -261,12 +268,7 @@ class Position():
                     player = players[0]
                     player.bomb_ready()
 
-        for bomb in new_bombs:
-            players = [entity for entity in result.entities if entity.is_player(bomb.owner)]
-            if len(players) > 0:
-                player = players[0]
-                player.bomb_used()
-            result.entities.append(bomb)
+
 
 
         
@@ -294,13 +296,14 @@ class Position():
                 cells_to_death.append(death_square)
 
         for cell in cells_to_death:
-            if cell == EMPTY_CELL:
+            cell_type = self.board[cell[1]][cell[0]]
+            if cell_type == EMPTY_CELL:
                 self.board[cell[1]][cell[0]] = DEATH_CELL
-            if cell == EMPTY_BOX:
+            if cell_type == EMPTY_BOX:
                 self.board[cell[1]][cell[0]] = DEATH_CELL_WAS_BOX0
-            if cell == EXTRA_RANGE:
+            if cell_type == EXTRA_RANGE:
                 self.board[cell[1]][cell[0]] = DEATH_CELL_WAS_BOX1
-            if cell == EXTRA_BOMB:
+            if cell_type == EXTRA_BOMB:
                 self.board[cell[1]][cell[0]] = DEAHT_CELL_WAS_BOX2
 
     def mark_explosions(self):
@@ -747,6 +750,12 @@ while True:
             global_player_points[key] = 0
     for key in point_counter.player_points.keys():
         global_player_points[key] = global_player_points[key] + point_counter.player_points[key]
+    living_player_ids = [player.owner for player in point_counter.entities if player.is_any_player()]
+    for key in point_counter.player_points.keys():
+        if key not in living_player_ids:
+            global_player_points[key] = 0
+    print (global_player_points, file= sys.stderr)
+            
     sorted_points = [point for point in reversed(sorted(global_player_points.values()))]
     
     me = -1
