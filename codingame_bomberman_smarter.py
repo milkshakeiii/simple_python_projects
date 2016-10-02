@@ -736,8 +736,10 @@ while True:
         parameters = [int(j) for j in input().split()]
         entities.append(Entity(parameters))
 
-
+##
 #    print(time.time())
+##
+    
     position = Position(board, entities)
     dummy_moves = [Move(MOVE_MOVE, them.x, them.y, them.owner) for them in position.entities if them.is_any_player()]
     position = position.move_result(dummy_moves, skip_tick = True)
@@ -754,7 +756,7 @@ while True:
     for key in point_counter.player_points.keys():
         if key not in living_player_ids:
             global_player_points[key] = 0
-    print (global_player_points, file= sys.stderr)
+    #print (global_player_points, file= sys.stderr)
             
     sorted_points = [point for point in reversed(sorted(global_player_points.values()))]
     
@@ -773,7 +775,9 @@ while True:
     for i in range(vision_depth):
         the_future.append(the_future[-1].move_result(dummy_moves))
 
-
+##
+#    print(time.time())
+##
     
     #######DIRECTIONLESS PATHFINDING###
     all_paths = psychic_pathfinding(the_future, (me.x, me.y))
@@ -783,7 +787,9 @@ while True:
         continue
     reachable_squares = set([(path[0], path[1]) for path in all_paths])
 
-
+##
+#    print(time.time())
+##
 
     #####FIND A GOOD DESTINATION#######
     destination = good_destination(position, reachable_squares, me)
@@ -794,12 +800,16 @@ while True:
         destination = sorted_threats[0]        
         print("grr...", destination, file=sys.stderr)
 
-
+##
+#    print(time.time())
+##
     #############FIND THE PATH#########
     next_square = select_path(the_future, all_paths, destination)
 
 
-
+##
+#    print(time.time())
+##
     #####UPDATE THE FUTURE FOR BOMBING##########
     bombing = ((me.x, me.y) == destination and me.bombs_remaining() > 0)
     
@@ -816,7 +826,9 @@ while True:
         the_future.append(the_future[-1].move_result(together_dummy_moves))
 
 
-
+##
+#    print(time.time())
+##
 
     #####FIND NEW DESTINATION AFTER BOMBING######
         #but don't bomb if we see trouble
@@ -839,7 +851,9 @@ while True:
 
 
 
-
+##
+#    print(time.time())
+##
 
     final_move = None
 
@@ -849,7 +863,7 @@ while True:
         for cell in row:
             if cell in [str(box) for box in [EMPTY_BOX, EXTRA_BOMB, EXTRA_RANGE]]:
                 remaining_boxes += 1
-    im_winning = (sorted_points[0] == global_player_points[MY_ID] and abs(sorted_points[0] - sorted_points[1]) > remaining_boxes)
+    im_winning = (sorted_points[0] == global_player_points[MY_ID] and remaining_boxes == 0)
     its_tied = sorted_points[0] == sorted_points[1] and (sorted_points[0] == global_player_points[MY_ID]) and remaining_boxes == 0
     if len(sorted_points) > 1 and (im_winning or its_tied):
         print("Dance dance dance", file=sys.stderr)
