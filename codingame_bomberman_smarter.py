@@ -674,6 +674,16 @@ def select_path(the_future, all_paths, destination):
 
     return next_square
 
+
+def squares_with_threats(position, me):
+    thems = [them for them in position.entities if not them.is_me()]
+    squares = []
+    for them in thems:
+        hits = explosion_hits(position, them.x, them.y, me.explosion_range())
+        squares = squares + hits[2]
+    return squares
+
+
 # game loop
 global_player_points = {}
 while True:
@@ -708,7 +718,7 @@ while True:
             global_player_points[key] = 0
     for key in point_counter.player_points.keys():
         global_player_points[key] = global_player_points[key] + point_counter.player_points[key]
-    
+    sorted_points = [point for point in reversed(sorted(global_player_points.values()))]
     
     me = -1
     for entity in entities:
@@ -739,7 +749,12 @@ while True:
 
     #####FIND A GOOD DESTINATION#######
     destination = good_destination(position, reachable_squares, me)
-    
+    #an agressive destination if i'm losing and the boxes are gone
+    if (sorted_points[0] != global_player_points[MY_ID] and remaining_boxes == 0):
+        sorted_threats = squares_with_threats(position, me)
+        sorted_threats.sort(key=lambda square: distance((me.x, me.y), square))
+        destination = sorted_threats[0]        
+        print("grr...", destination, file=sys.stderr)
 
 
     #############FIND THE PATH#########
@@ -791,13 +806,14 @@ while True:
     final_move = None
 
     #stop dropping bombs if i'm going to win on time
-    sorted_points = [point for point in reversed(sorted(global_player_points.values()))]
     remaining_boxes = 0
     for row in position.board:
         for cell in row:
             if cell in [str(box) for box in [EMPTY_BOX, EXTRA_BOMB, EXTRA_RANGE]]:
                 remaining_boxes += 1
-    if len(sorted_points) > 1 and sorted_points[0] == global_player_points[MY_ID] and abs(sorted_points[0] - sorted_points[1]) > remaining_boxes:
+    im_winning = (sorted_points[0] == global_player_points[MY_ID] and abs(sorted_points[0] - sorted_points[1]) > remaining_boxes)
+    its_tied = sorted_points[0] == sorted_points[1] and (sorted_points[0] == global_player_points[MY_ID]) and remaining_boxes == 0
+    if len(sorted_points) > 1 and (im_winning or its_tied):
         print("Dance dance dance", file=sys.stderr)
         bombing = False
     
