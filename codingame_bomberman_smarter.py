@@ -756,7 +756,7 @@ while True:
     for key in point_counter.player_points.keys():
         if key not in living_player_ids:
             global_player_points[key] = 0
-    #print (global_player_points, file= sys.stderr)
+    print (global_player_points, file= sys.stderr)
             
     sorted_points = [point for point in reversed(sorted(global_player_points.values()))]
     
