@@ -1,9 +1,189 @@
 import sys
 import math
+import random
+import time
+
 
 
 MOVE = 0
 SHOOT = 1
+
+
+
+GADEPTH = 20
+GATURNOVER = 0.8
+
+MOVE_BIAS = 0.5
+FULL_SPEED_BIAS = 0.25
+SHOOT_NEAREST_BIAS = 0.5
+
+
+MUTATE_TWEAK_CHANCE = 0.15
+MUTATE_TWEAK_POWER = 0.08
+MUTATE_RANDOMIZE_CHANCE = 0.14
+
+
+
+def dumb_strategy(game):
+
+    return Move(SHOOT, game.enemies[0])
+
+
+
+
+def stand_and_deliver(game):
+
+    nearest_enemy = (game.enemies[0], float('inf'))
+    for enemy in game.enemies:
+        distance_to_enemy = game.wolff.position.distance_to(enemy.position)
+        if distance_to_enemy < nearest_enemy[1]:
+            nearest_enemy = (enemy, distance_to_enemy)
+    
+    return Move(SHOOT, nearest_enemy[0])
+
+
+
+class GAIndividual():
+    def __init__(self, depth):
+        #every four genes represents one move
+        #it consists of values from 0 to 1
+        #(1st) for the first value: less than 0.5 means move, greater means shoot
+        #(2nd) second value is ignored for shoot, it is angle to move from 0 to 2pi radians
+        #(3rd) third value is ignored for shoot, it is distance to move,
+        #linearally 0 to 1000 from 0 to 0.75, rest represents 1000
+        #(4th) fourth represents which enemy to shoot, nearest enemy has 1/2 chance,
+        #the rest is distributed evenly
+        self.genes = []
+        self.genes_read = 0
+
+        
+        self.depth = depth
+
+
+
+        self.fitness = -1
+
+    def reset_reading(self):
+        self.genes_read = 0
+
+    def read_a_gene(self):
+        gene = self.genes[self.genes_read]
+        self.genes_read += 1
+        return gene
+
+    def randomize(self):
+        for i in range(self.depth):
+            for j in range(4):
+                self.genes.append(random.random())
+
+    def spawn_from(self, parents):
+        for i in range(len(parents[0].genes)):
+            random_parent_i = int(random.random() * len(parents))
+            random_parent = parents[random_parent_i]
+            self.genes.append(random_parent.genes[i])
+
+    def mutate(self):
+        for i in range(len(self.genes)):
+            chance = random.random()
+            if (chance < MUTATE_TWEAK_CHANCE):
+                self.genes[i] = (self.genes[i] + random.random() * MUTATE_TWEAK_POWER - MUTATE_TWEAK_POWER/2)%1
+            if (chance > 1 - MUTATE_RANDOMIZE_CHANCE):
+                self.genes[i] = random.random()
+        
+
+    def evaluate_fitness_on_game(self, game):
+        self.reset_reading()
+        game.simulate(self.my_strategy)
+        self.fitness = game.score()
+        return self.fitness
+
+    def my_strategy(self, game):
+        if self.genes_read < len(self.genes):
+            next_four_genes = []
+            for i in range(4):
+                next_four_genes.append(self.read_a_gene())
+
+            next_move_type = SHOOT
+            if next_four_genes[0] < MOVE_BIAS:
+                next_move_type = MOVE
+            
+            move_direction = math.pi * 2 * next_four_genes[1]
+
+            move_magnitude = 1000
+            if next_four_genes[2] > FULL_SPEED_BIAS:
+                move_magnitude = 1000 * ( (next_four_genes[2] - FULL_SPEED_BIAS)/(1 - FULL_SPEED_BIAS) )
+
+            move_target = game.wolff.position.point_distance_in(move_magnitude, move_direction)
+
+            #enemy, distance
+            nearest_enemy = (game.enemies[0], float('inf'))
+            for enemy in game.enemies:
+                distance_to_enemy = game.wolff.position.distance_to(enemy.position)
+                if distance_to_enemy < nearest_enemy[1]:
+                    nearest_enemy = (enemy, distance_to_enemy)
+                    
+            murderee = nearest_enemy[0]
+            if next_four_genes[3] > SHOOT_NEAREST_BIAS:
+                unbiased_value = ( (next_four_genes[3] - SHOOT_NEAREST_BIAS)/(1 - SHOOT_NEAREST_BIAS) )
+                random_enemy = int(next_four_genes[3] * len(game.enemies))
+                murderee = game.enemies[random_enemy]
+
+            next_move = None
+            if next_move_type == MOVE:
+                next_move = Move(MOVE, move_target)
+            else:
+                next_move = Move(SHOOT, murderee)
+            return next_move
+        else:
+            return stand_and_deliver(game)
+
+
+    
+
+
+class GAGeneration():
+    def __init__(self, size):
+        self.size = size
+        self.members = []
+
+    def randomize(self):
+        for i in range(self.size):
+            new_individual = GAIndividual(GADEPTH)
+            new_individual.randomize()
+            self.members.append(new_individual)
+
+    def revolve(self, game):
+        individuals_to_keep = int((1-GATURNOVER) * len(self.members))
+        
+        fitness_sum = 0
+        for member in self.members:
+            new_game = game.copy()
+            member.evaluate_fitness_on_game(new_game)
+            #print(member.fitness)
+            fitness_sum += member.fitness
+
+
+        self.members.sort(key=lambda member: -member.fitness)
+
+        print("sum: " + str(fitness_sum), file=sys.stderr)
+        print("max: " + str(self.members[0].fitness), file=sys.stderr)
+
+        
+        survivors = self.members[:individuals_to_keep]
+        
+        new_generation = []
+        while len(new_generation) < self.size - individuals_to_keep:
+            random_parent_a = survivors[int(random.random() * len(survivors))]
+            random_parent_b = survivors[int(random.random() * len(survivors))]
+            new_individual = GAIndividual(GADEPTH)
+            new_individual.spawn_from([random_parent_a, random_parent_b])
+            new_individual.mutate()
+            new_generation.append(new_individual)
+        
+        self.members = survivors + new_generation
+        
+
+
 
 
 
@@ -26,9 +206,13 @@ class Point():
 
     def point_distance_towards(self, units, target):
         angle = self.direction_to(target)
+        return self.point_distance_in(units, angle)
+
+    def point_distance_in(self, units, angle):
         y = self.y + math.sin(angle)*units
         x = self.x + math.cos(angle)*units
         return (Point(x, y))
+        
 
     def __eq__(a, b):
         return (a.x == b.x) and (a.y == b.y)
@@ -59,6 +243,9 @@ class Enemy(Unit):
         def distance_to_data_point(data_point):
             return self.position.distance_to(data_point.position)
         self.target_data_point = min(data_points, key = distance_to_data_point)
+
+    def copy(self):
+        return Enemy(self.game_id, self.position, self.health)
         
 
 
@@ -75,6 +262,9 @@ class Data_Point(Unit):
     def __init__(self, game_id, position):
         super().__init__(game_id, position, 0)
 
+    def copy(self):
+        return Data_Point(self.game_id, self.position)
+
 
 
 class Game():
@@ -88,9 +278,14 @@ class Game():
         self.lost = False
         self.won = False
 
+    def copy(self):
+        return Game(Wolff(self.wolff.game_id, Point(self.wolff.position.x, self.wolff.position.y)),
+                    [enemy.copy() for enemy in self.enemies],
+                    [data_point.copy() for data_point in self.data_points])
+
     def score(self):
         if self.lost:
-            return -1
+            return 0
         DP = len(self.data_points)
         base = 100 * DP + 10 * (self.starting_enemy_count - len(self.enemies))
         bonus = DP * max(0, self.L - 3*self.S) * 3
@@ -151,22 +346,6 @@ class Game():
             
 
 
-def dumb_strategy(game):
-
-
-
-    return Move(MOVE, Point(8000, 4500))
-
-
-
-
-def stand_and_deliver(game):
-    
-    return Move(SHOOT, game.enemies[0])
-
-
-
-
 class Move():
     def __init__(self, move_type, target):
         self.move_type = move_type
@@ -180,7 +359,16 @@ class Move():
             result = "SHOOT" + " " + str(self.target.game_id)
         return result
 
+
+
+
+
+
+
+
+
 first_loop = True
+my_GA = None
 # game loop
 while True:
 
@@ -212,14 +400,24 @@ while True:
     game = Game(wolff, enemies, data_points)
     
 
-    # MOVE x y or SHOOT id
-    print(stand_and_deliver(game).get_string())
-
-
 
     if (first_loop):
-        game.simulate(stand_and_deliver)
-        print(game.score(), file=sys.stderr)
+        gen = GAGeneration(100)
+        gen.randomize()
+        print("start revolving " + str(time.time()), file=sys.stderr)
+        for i in range(7):
+            gen.revolve(game)
+        print("stop revolving " + str(time.time()), file=sys.stderr)
+        my_GA = gen.members[0]
+        my_GA.reset_reading()
         first_loop = False
+
+    
+
+
+    # MOVE x y or SHOOT id
+    print(my_GA.my_strategy(game).get_string())
+
+
 
 
