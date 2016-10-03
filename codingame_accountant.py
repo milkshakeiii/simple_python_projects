@@ -14,8 +14,8 @@ class Point():
 
     def distance_to(self, b):
         a = self
-        da = a.x-b.y
-        db = a.x-b.y
+        da = a.x-b.x
+        db = a.y-b.y
         d = math.sqrt(da**2 + db**2)
         return d
         
@@ -30,6 +30,9 @@ class Point():
         x = self.x + math.cos(angle)*units
         return (Point(x, y))
 
+    def __eq__(a, b):
+        return (a.x == b.x) and (a.y == b.y)
+
     
 
 
@@ -40,7 +43,10 @@ class Unit():
         self.game_id = game_id
 
     def move_toward(self, target):
-        self.position = self.position.point_distance_towards(self.speed, target)
+        if self.position.distance_to(target) <= self.speed:
+            self.position = target
+        else:
+            self.position = self.position.point_distance_towards(self.speed, target)
 
 
 class Enemy(Unit):
@@ -52,12 +58,17 @@ class Enemy(Unit):
     def set_target_data_point(self, data_points):
         def distance_to_data_point(data_point):
             return self.position.distance_to(data_point.position)
-        target_data_point = min(data_points, key = distance_to_data_point)
+        self.target_data_point = min(data_points, key = distance_to_data_point)
+        
 
 
 class Wolff(Unit):
     def __init__(self, game_id, position):
         super().__init__(game_id, position, 1000)
+
+    def shot_damage(self, enemy):
+        return round(125000 / self.position.distance_to(enemy.position)**1.2)
+        
 
 
 class Data_Point(Unit):
@@ -75,9 +86,10 @@ class Game():
         self.S = 0
         self.starting_enemy_count = len(self.enemies)
         self.lost = False
+        self.won = False
 
     def score(self):
-        if lost:
+        if self.lost:
             return -1
         DP = len(self.data_points)
         base = 100 * DP + 10 * (self.starting_enemy_count - len(self.enemies))
@@ -88,14 +100,14 @@ class Game():
         #enemies move towards their targets
         for enemy in self.enemies:
             if enemy.target_data_point == None:
-                enemy.set_target_data_point()
-            enemy.move_toward(enemy.target_data_point())
-
-        #if a move command was givne, WOlff moves towards his target            
+                enemy.set_target_data_point(self.data_points)
+            enemy.move_toward(enemy.target_data_point.position)
+            
+        #if a move command was given, Wolff moves towards his target            
         if (move.move_type == MOVE):
             self.wolff.move_toward(move.target)
 
-        #game over if an enemy is close enough to wolff
+        #game over if an enemy is close enough to Wolff
         for enemy in self.enemies:
             if self.wolff.position.distance_to(enemy.position) <= 2000:
                 self.lost = True
@@ -103,7 +115,38 @@ class Game():
 
         #if a shoot command was given, Wolff shoots an enemy
         if (move.move_type == SHOOT):
-            self.wolff.shoot(move.target)
+            damage = self.wolff.shot_damage(move.target)
+            move.target.health -= damage
+            self.S += 1
+
+            #enemies with zero life points are removed from play
+            if (move.target.health <= 0):
+                self.enemies.remove(move.target)
+
+        #enemies collect data points they share coordinates with
+        collected_data_points = set()
+        for enemy in self.enemies:
+            if enemy.position == enemy.target_data_point.position:
+                collected_data_points.add(enemy.target_data_point)
+        for collected_data_point in collected_data_points:
+            self.data_points.remove(collected_data_point)
+            for enemy in self.enemies:
+                if (enemy.target_data_point == collected_data_point):
+                    enemy.target_data_point = None
+
+        #If all data points are collected by the enemies, the game ends.
+        if len(self.data_points) == 0:
+            self.won = True
+            return
+
+        #if there are no more enemies left, we win yay
+        if len(self.enemies) == 0:
+            self.won = True
+                
+    def simulate(self, strategy):
+        while (not self.won and not self.lost):
+            next_move = strategy(self)
+            self.do_move(next_move)
             
             
 
@@ -137,9 +180,15 @@ class Move():
             result = "SHOOT" + " " + str(self.target.game_id)
         return result
 
-
+first_loop = True
 # game loop
 while True:
+
+
+#    while (True):
+#        print(input(), file=sys.stderr)
+
+    
     x, y = [int(i) for i in input().split()]
     wolff_position = Point(x, y)
     wolff = Wolff(0, wolff_position)
@@ -158,8 +207,19 @@ while True:
         enemy_position = Point(enemy_x, enemy_y)
         enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
 
-    game = Game(wolff, enemies, data_points)
 
+
+    game = Game(wolff, enemies, data_points)
+    
 
     # MOVE x y or SHOOT id
     print(stand_and_deliver(game).get_string())
+
+
+
+    if (first_loop):
+        game.simulate(stand_and_deliver)
+        print(game.score(), file=sys.stderr)
+        first_loop = False
+
+
