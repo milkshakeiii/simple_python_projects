@@ -5,22 +5,40 @@ import time
 
 
 
-MOVE = 0
-SHOOT = 1
+FIRST_TIME_LIMIT = 0.97
+SUBSEQUENT_TIME_LIMIT = 0.07
+GENERATION_SIZE = 100
 
 
 
-GADEPTH = 20
-GATURNOVER = 0.8
+
+GADEPTH = 10
+
+GATURNOVER = 0.9
+GAFLUKES = 0.15
+GANEWCOMERS = 0.15
 
 MOVE_BIAS = 0.5
 FULL_SPEED_BIAS = 0.25
-SHOOT_NEAREST_BIAS = 0.5
-
+SHOOT_NEAREST_BIAS = 0.2
 
 MUTATE_TWEAK_CHANCE = 0.15
 MUTATE_TWEAK_POWER = 0.08
 MUTATE_RANDOMIZE_CHANCE = 0.14
+
+
+
+
+WIDTH = 16000
+HEIGHT = 9000
+
+
+
+
+MOVE = 0
+SHOOT = 1
+
+
 
 
 
@@ -63,6 +81,13 @@ class GAIndividual():
 
         self.fitness = -1
 
+    def copy(self):
+        copy = GAIndividual(self.depth)
+        copy.genes = self.genes[:]
+        copy.genes_read = self.genes_read
+        copy.fitness = self.fitness
+        return copy
+
     def reset_reading(self):
         self.genes_read = 0
 
@@ -91,9 +116,9 @@ class GAIndividual():
                 self.genes[i] = random.random()
         
 
-    def evaluate_fitness_on_game(self, game):
+    def evaluate_fitness_on_game(self, game, depth):
         self.reset_reading()
-        game.simulate(self.my_strategy)
+        game.simulate(self.my_strategy, depth)
         self.fitness = game.score()
         return self.fitness
 
@@ -113,7 +138,10 @@ class GAIndividual():
             if next_four_genes[2] > FULL_SPEED_BIAS:
                 move_magnitude = 1000 * ( (next_four_genes[2] - FULL_SPEED_BIAS)/(1 - FULL_SPEED_BIAS) )
 
+
             move_target = game.wolff.position.point_distance_in(move_magnitude, move_direction)
+            if (game.wolff.position.distance_to(move_target) > 1002):
+                print(game.wolff.position.x, game.wolff.position.y, move_target.x, move_target.y, move_magnitude, move_direction, next_four_genes[2])
 
             #enemy, distance
             nearest_enemy = (game.enemies[0], float('inf'))
@@ -152,35 +180,112 @@ class GAGeneration():
             new_individual.randomize()
             self.members.append(new_individual)
 
-    def revolve(self, game):
-        individuals_to_keep = int((1-GATURNOVER) * len(self.members))
+    def best_member(self):
+        return max(self.members, key=lambda member: member.fitness)
+
+    def revolve(self, game, depth, start_time, time_limit):
+
+        ###when we run into time trouble, restore the backup and return False to indicate we're done
+        members_backup = self.members[:]
+        def emergency_stop_check():
+            if (time.time() - start_time) > time_limit:
+                self.members = members_backup
+                return True
+
+        if (emergency_stop_check()):
+            return False
         
+        individuals_to_keep = int((1-GATURNOVER) * len(self.members))
+        flukes_to_keep = int(GAFLUKES*len(self.members))
+        newcomers_to_add = int(GANEWCOMERS*len(self.members))
+
+
+        ###create a list of members weighted by their fitness
         fitness_sum = 0
         for member in self.members:
             new_game = game.copy()
-            member.evaluate_fitness_on_game(new_game)
+            member.evaluate_fitness_on_game(new_game, depth)
             #print(member.fitness)
             fitness_sum += member.fitness
 
+        if (emergency_stop_check()):
+            return False
 
-        self.members.sort(key=lambda member: -member.fitness)
+        spaced_members = []
+        for member in self.members:
+            spaced_members.append((member.fitness/fitness_sum, member))
 
-        print("sum: " + str(fitness_sum), file=sys.stderr)
-        print("max: " + str(self.members[0].fitness), file=sys.stderr)
+        if (emergency_stop_check()):
+            return False
+
+        ###take some random members with better chances for fitter members
+        winning_numbers = []
+        survivors = []
+        while len(winning_numbers) < (individuals_to_keep - 1): #leave 1 space for the best
+            winning_numbers.append(random.random())
+        winning_numbers.sort()
+
+
+        if (emergency_stop_check()):
+            return False
 
         
-        survivors = self.members[:individuals_to_keep]
+
+        next_winner = winning_numbers.pop(0)
+        for spaced_member in spaced_members:
+            if (spaced_member[0] > next_winner):
+                survivors.append(spaced_member[1])
+                next_winner = winning_numbers.pop(0)
+                if (len(winning_numbers) == 0):
+                    break
+        
+
+
+
+        if (emergency_stop_check()):
+            return False
+        
+        
+
+        best_member = self.best_member()
+        survivors.append(best_member)
+        print("sum: " + str(fitness_sum), file=sys.stderr)
+        print("max: " + str(best_member.fitness), file=sys.stderr)
+
+        if (emergency_stop_check()):
+            return False
+
+        
+        flukes = []
+        while len(flukes) < flukes_to_keep:
+            flukes.append(self.members[int(random.random()*len(self.members))])
+
+        if (emergency_stop_check()):
+            return False
+            
+        newcomers = []
+        while len(newcomers) < newcomers_to_add:
+            newcomer = GAIndividual(GADEPTH)
+            newcomer.randomize()
+            newcomers.append(newcomer)
+
+        if (emergency_stop_check()):
+            return False
         
         new_generation = []
-        while len(new_generation) < self.size - individuals_to_keep:
+        while len(new_generation) < self.size - individuals_to_keep - flukes_to_keep - newcomers_to_add:
+            if (emergency_stop_check()):
+                return False
             random_parent_a = survivors[int(random.random() * len(survivors))]
             random_parent_b = survivors[int(random.random() * len(survivors))]
-            new_individual = GAIndividual(GADEPTH)
+            new_individual = GAIndividual(depth)
             new_individual.spawn_from([random_parent_a, random_parent_b])
             new_individual.mutate()
             new_generation.append(new_individual)
         
-        self.members = survivors + new_generation
+        self.members = survivors + new_generation + flukes + newcomers
+
+        return True
         
 
 
@@ -227,10 +332,20 @@ class Unit():
         self.game_id = game_id
 
     def move_toward(self, target):
+        end = None
         if self.position.distance_to(target) <= self.speed:
-            self.position = target
+            end = target
         else:
-            self.position = self.position.point_distance_towards(self.speed, target)
+            end = self.position.point_distance_towards(self.speed, target)
+        if (end.x < 0):
+            end.x = 0
+        if (end.y < 0):
+            end.y = 0
+        if (end.x > WIDTH):
+            end.x = WIDTH
+        if (end.y > HEIGHT):
+            end.y = HEIGHT
+        self.position = end
 
 
 class Enemy(Unit):
@@ -254,7 +369,9 @@ class Wolff(Unit):
         super().__init__(game_id, position, 1000)
 
     def shot_damage(self, enemy):
-        return round(125000 / self.position.distance_to(enemy.position)**1.2)
+        damage = round(125000 / self.position.distance_to(enemy.position)**1.2)
+        #print ("BANG! " + str(damage))
+        return damage
         
 
 
@@ -279,9 +396,15 @@ class Game():
         self.won = False
 
     def copy(self):
-        return Game(Wolff(self.wolff.game_id, Point(self.wolff.position.x, self.wolff.position.y)),
+        copy = Game(Wolff(self.wolff.game_id, Point(self.wolff.position.x, self.wolff.position.y)),
                     [enemy.copy() for enemy in self.enemies],
                     [data_point.copy() for data_point in self.data_points])
+        copy.lost = self.lost
+        copy.won = self.won
+        copy.starting_enemy_count = self.starting_enemy_count
+        copy.S = self.S
+        copy.L = self.L
+        return copy
 
     def score(self):
         if self.lost:
@@ -338,8 +461,10 @@ class Game():
         if len(self.enemies) == 0:
             self.won = True
                 
-    def simulate(self, strategy):
-        while (not self.won and not self.lost):
+    def simulate(self, strategy, depth):
+        depth_simulated = 0
+        while (not self.won and not self.lost and depth_simulated < depth):
+            depth_simulated += 1
             next_move = strategy(self)
             self.do_move(next_move)
             
@@ -367,14 +492,17 @@ class Move():
 
 
 
-first_loop = True
+loop_count = 0
 my_GA = None
+my_next_GA = None
+my_next_game = None
+original_game = None
 # game loop
 while True:
 
 
-#    while (True):
-#        print(input(), file=sys.stderr)
+    #while (True):
+    #    print(input(), file=sys.stderr)
 
     
     x, y = [int(i) for i in input().split()]
@@ -398,25 +526,55 @@ while True:
 
 
     game = Game(wolff, enemies, data_points)
-    
+    if original_game == None:
+        original_game = game.copy()
 
 
-    if (first_loop):
-        gen = GAGeneration(100)
+    if (loop_count == 0):
+        gen = GAGeneration(GENERATION_SIZE)
         gen.randomize()
-        print("start revolving " + str(time.time()), file=sys.stderr)
-        for i in range(7):
-            gen.revolve(game)
+        
+        start_time = time.time()
+        print("start revolving " + str(start_time), file=sys.stderr)
+        while (gen.revolve(game, GADEPTH, start_time, FIRST_TIME_LIMIT)):
+            continue
         print("stop revolving " + str(time.time()), file=sys.stderr)
+        
         my_GA = gen.members[0]
         my_GA.reset_reading()
-        first_loop = False
+        game.simulate(my_GA.my_strategy, GADEPTH)
+        my_GA.reset_reading()
+        
+        my_next_game = game
 
-    
+        gen = GAGeneration(GENERATION_SIZE)
+        gen.randomize()
+
+    else:        
+
+        start_time = time.time()
+        print("start revolving " + str(start_time), file=sys.stderr)
+        while (gen.revolve(my_next_game, GADEPTH, start_time, SUBSEQUENT_TIME_LIMIT)):
+            continue
+        print("stop revolving " + str(time.time()), file=sys.stderr)
+
+        if (loop_count % GADEPTH == 0):
+            print ("NEXT GA", file=sys.stderr)
+            my_GA = gen.members[0]
+            my_GA.reset_reading()
+            my_next_game.simulate(my_GA.my_strategy, GENERATION_SIZE)
+            my_GA.reset_reading()
+
+            gen = GAGeneration(150)
+            gen.randomize()
 
 
     # MOVE x y or SHOOT id
-    print(my_GA.my_strategy(game).get_string())
+    this_turn_move = my_GA.my_strategy(original_game)
+    original_game.simulate(lambda input_game: this_turn_move, 1)
+    print(original_game.score(), file=sys.stderr)
+    print(this_turn_move.get_string())
+    loop_count += 1
 
 
 
