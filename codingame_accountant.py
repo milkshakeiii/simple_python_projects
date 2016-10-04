@@ -5,14 +5,15 @@ import time
 
 
 
-FIRST_TIME_LIMIT = 0.97
-SUBSEQUENT_TIME_LIMIT = 0.07
+FIRST_TIME_LIMIT = 0.98
+SUBSEQUENT_TIME_LIMIT = 0.08
 GENERATION_SIZE = 100
 
 
 
 
 GADEPTH = 10
+EVAL_DEPTH = float('inf')
 
 GATURNOVER = 0.9
 GAFLUKES = 0.15
@@ -203,6 +204,8 @@ class GAGeneration():
         ###create a list of members weighted by their fitness
         fitness_sum = 0
         for member in self.members:
+            if (emergency_stop_check()):
+                return False
             new_game = game.copy()
             member.evaluate_fitness_on_game(new_game, depth)
             #print(member.fitness)
@@ -249,8 +252,7 @@ class GAGeneration():
 
         best_member = self.best_member()
         survivors.append(best_member)
-        print("sum: " + str(fitness_sum), file=sys.stderr)
-        print("max: " + str(best_member.fitness), file=sys.stderr)
+
 
         if (emergency_stop_check()):
             return False
@@ -284,6 +286,9 @@ class GAGeneration():
             new_generation.append(new_individual)
         
         self.members = survivors + new_generation + flukes + newcomers
+
+        print("sum: " + str(fitness_sum), file=sys.stderr)
+        print("max: " + str(best_member.fitness), file=sys.stderr)
 
         return True
         
@@ -536,7 +541,7 @@ while True:
         
         start_time = time.time()
         print("start revolving " + str(start_time), file=sys.stderr)
-        while (gen.revolve(game, GADEPTH, start_time, FIRST_TIME_LIMIT)):
+        while (gen.revolve(game, EVAL_DEPTH, start_time, FIRST_TIME_LIMIT)):
             continue
         print("stop revolving " + str(time.time()), file=sys.stderr)
         
@@ -554,7 +559,7 @@ while True:
 
         start_time = time.time()
         print("start revolving " + str(start_time), file=sys.stderr)
-        while (gen.revolve(my_next_game, GADEPTH, start_time, SUBSEQUENT_TIME_LIMIT)):
+        while (gen.revolve(my_next_game, EVAL_DEPTH, start_time, SUBSEQUENT_TIME_LIMIT)):
             continue
         print("stop revolving " + str(time.time()), file=sys.stderr)
 
@@ -562,10 +567,10 @@ while True:
             print ("NEXT GA", file=sys.stderr)
             my_GA = gen.members[0]
             my_GA.reset_reading()
-            my_next_game.simulate(my_GA.my_strategy, GENERATION_SIZE)
+            my_next_game.simulate(my_GA.my_strategy, GADEPTH)
             my_GA.reset_reading()
 
-            gen = GAGeneration(150)
+            gen = GAGeneration(GENERATION_SIZE)
             gen.randomize()
 
 
