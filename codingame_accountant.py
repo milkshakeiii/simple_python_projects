@@ -216,7 +216,10 @@ class GAGeneration():
 
         spaced_members = []
         for member in self.members:
-            spaced_members.append((member.fitness/fitness_sum, member))
+            if fitness_sum == 0:
+                spaced_members.append(1, member)
+            else:
+                spaced_members.append((member.fitness/fitness_sum, member))
 
         if (emergency_stop_check()):
             return False
