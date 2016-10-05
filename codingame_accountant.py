@@ -439,7 +439,8 @@ class Game():
         for enemy in self.enemies:
             if enemy.target_data_point == None:
                 enemy.set_target_data_point(self.data_points)
-            enemy.approach_target()
+            #enemy.approach_target()
+            enemy.move_toward(enemy.target_data_point.position)
             
         #if a move command was given, Wolff moves towards his target            
         if (move.move_type == MOVE):
