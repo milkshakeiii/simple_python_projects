@@ -572,6 +572,8 @@ def stochastic_solution():
     my_next_game = None
     original_game = None
     while True:
+
+        #############################READ INPUT##############
         x, y = [int(i) for i in input().split()]
         wolff_position = Point(x, y)
         wolff = Wolff(0, wolff_position)
@@ -599,7 +601,7 @@ def stochastic_solution():
             original_game = game.copy()
 
 
-
+        ############################ON THE FIRST CYCLE################
         if (loop_count == 0):
 
             start_time = time.time()
@@ -633,7 +635,7 @@ def stochastic_solution():
         else:        
 
 
-            
+            ###################################ON SUBSEQUENT CYCLES###############
             evaluated = 0
             start_time = time.time()
             print("start guessing " + str(start_time), file=sys.stderr)
@@ -649,7 +651,9 @@ def stochastic_solution():
             print(str(evaluated) + " guesses evaluated", file=sys.stderr)
             print("best fitness: " + str(next_best_solution.fitness), file=sys.stderr)
 
-            if (loop_count % GADEPTH == 0):
+            #################WHEN ITS TIME TO SWITCH TO OUR NEXT STOCHASTIC SOLUTION############
+            #every STODEPTH loops
+            if (loop_count % STODEPTH == 0):
                 print ("NEXT BEST GUESS", file=sys.stderr)
                 best_solution = next_best_solution
                 
@@ -664,8 +668,8 @@ def stochastic_solution():
 
         # MOVE x y or SHOOT id
         this_turn_move = best_solution.my_strategy(original_game)
-        print(original_game.score(), file=sys.stderr)
         original_game.simulate(lambda input_game: this_turn_move, 1)
+        print(original_game.score(), file=sys.stderr)
         print(this_turn_move.get_string())
         loop_count += 1
     
