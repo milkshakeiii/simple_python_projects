@@ -324,7 +324,9 @@ class Point():
         y = self.y + math.sin(angle)*units
         x = self.x + math.cos(angle)*units
         return (Point(x, y))
-        
+
+    def copy(self):
+        return Point(self.x, self.y)
 
     def __eq__(a, b):
         return (a.x == b.x) and (a.y == b.y)
@@ -360,11 +362,22 @@ class Enemy(Unit):
         super().__init__(game_id, position, 500)
         self.health = health
         self.target_data_point = None
+        self.facing = None
+        self.distance_to_target = None
+
+    def approach_target(self):
+        self.distance_to_target -= self.speed
+        if self.distance_to_target < 0:
+            self.position = self.target_data_point.position.copy()
+        else:
+            self.position = self.position.point_distance_in(self.speed, self.facing)
 
     def set_target_data_point(self, data_points):
         def distance_to_data_point(data_point):
             return self.position.distance_to(data_point.position)
         self.target_data_point = min(data_points, key = distance_to_data_point)
+        self.facing = self.position.direction_to(self.target_data_point.position)
+        self.distance_to_target = self.position.distance_to(self.target_data_point.position)
 
     def copy(self):
         return Enemy(self.game_id, self.position, self.health)
@@ -426,7 +439,7 @@ class Game():
         for enemy in self.enemies:
             if enemy.target_data_point == None:
                 enemy.set_target_data_point(self.data_points)
-            enemy.move_toward(enemy.target_data_point.position)
+            enemy.approach_target()
             
         #if a move command was given, Wolff moves towards his target            
         if (move.move_type == MOVE):
