@@ -7,12 +7,13 @@ import time
 
 FIRST_TIME_LIMIT = 0.98
 SUBSEQUENT_TIME_LIMIT = 0.08
-GENERATION_SIZE = 100
+GENERATION_SIZE = 5
 
 
 
 
 GADEPTH = 10
+STODEPTH = 10
 EVAL_DEPTH = float('inf')
 
 GATURNOVER = 0.9
@@ -121,6 +122,7 @@ class GAIndividual():
         self.reset_reading()
         game.simulate(self.my_strategy, depth)
         self.fitness = game.score()
+        #print(self.fitness)
         return self.fitness
 
     def my_strategy(self, game):
@@ -145,7 +147,7 @@ class GAIndividual():
             #enemy, distance
             nearest_enemy = (game.enemies[0], float('inf'))
             for enemy in game.enemies:
-                distance_to_enemy = game.wolff.position.distance_to(enemy.position)
+                distance_to_enemy = game.wolff.position.square_distance_to(enemy.position)
                 if distance_to_enemy < nearest_enemy[1]:
                     nearest_enemy = (enemy, distance_to_enemy)
             #murderee = game.enemies[int(next_four_genes[3]*len(game.enemies))]
@@ -234,14 +236,16 @@ class GAGeneration():
             return False
 
         
-
-        next_winner = winning_numbers.pop(0)
-        for spaced_member in spaced_members:
-            if (spaced_member[0] > next_winner):
-                survivors.append(spaced_member[1])
-                next_winner = winning_numbers.pop(0)
-                if (len(winning_numbers) == 0):
-                    break
+        if (len(winning_numbers) > 0):
+            next_winner = winning_numbers.pop(0)
+            for spaced_member in spaced_members:
+                if (spaced_member[0] > next_winner):
+                    survivors.append(spaced_member[1])
+                    if (len(winning_numbers) == 0):
+                        break
+                    next_winner = winning_numbers.pop(0)
+                    if (len(winning_numbers) == 0):
+                        break
         
 
 
@@ -310,6 +314,12 @@ class Point():
         db = a.y-b.y
         d = math.sqrt(da**2 + db**2)
         return d
+
+    def square_distance_to(self, b):
+        a = self
+        da = a.x-b.x
+        db = a.y-b.y
+        return da**2 + db**2
         
     def direction_to(self, b):
         opposite = b.y-self.y
@@ -342,7 +352,7 @@ class Unit():
 
     def move_toward(self, target):
         end = None
-        if self.position.distance_to(target) <= self.speed:
+        if self.position.square_distance_to(target) <= self.speed**2:
             end = target
         else:
             end = self.position.point_distance_towards(self.speed, target)
@@ -366,11 +376,26 @@ class Enemy(Unit):
         self.distance_to_target = None
 
     def approach_target(self):
-        self.distance_to_target -= self.speed
-        if self.distance_to_target < 0:
-            self.position = self.target_data_point.position.copy()
+        end = None
+        target = self.target_data_point.position
+        if self.position.square_distance_to(target) <= self.speed**2:
+            end = target
         else:
-            self.position = self.position.point_distance_in(self.speed, self.facing)
+            end = self.position.point_distance_in(self.speed, self.facing)
+        if (end.x < 0):
+            end.x = 0
+        if (end.y < 0):
+            end.y = 0
+        if (end.x > WIDTH):
+            end.x = WIDTH
+        if (end.y > HEIGHT):
+            end.y = HEIGHT
+        self.position = end
+        #self.distance_to_target -= self.speed
+        #if self.distance_to_target < 0:
+        #    self.position = self.target_data_point.position.copy()
+        #else:
+        #    self.position = self.position.point_distance_in(self.speed, self.facing)
 
     def set_target_data_point(self, data_points):
         def distance_to_data_point(data_point):
@@ -439,8 +464,8 @@ class Game():
         for enemy in self.enemies:
             if enemy.target_data_point == None:
                 enemy.set_target_data_point(self.data_points)
-            #enemy.approach_target()
-            enemy.move_toward(enemy.target_data_point.position)
+            enemy.approach_target()
+            #enemy.move_toward(enemy.target_data_point.position)
             
         #if a move command was given, Wolff moves towards his target            
         if (move.move_type == MOVE):
@@ -507,95 +532,237 @@ class Move():
 
 
 
+def simulated_annealing_solution():
+    while True:
+
+
+        #while (True):
+        #    print(input(), file=sys.stderr)
+
+        
+        x, y = [int(i) for i in input().split()]
+        wolff_position = Point(x, y)
+        wolff = Wolff(0, wolff_position)
+        
+        data_count = int(input())
+        data_points = []
+        for i in range(data_count):
+            data_id, data_x, data_y = [int(j) for j in input().split()]
+            data_position = Point(data_x, data_y)
+            data_points.append(Data_Point(data_id, data_position))
+            
+        enemy_count = int(input())
+        enemies = []
+        for i in range(enemy_count):
+            enemy_id, enemy_x, enemy_y, enemy_life = [int(j) for j in input().split()]
+            enemy_position = Point(enemy_x, enemy_y)
+            enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
 
 
 
-
-
-loop_count = 0
-my_GA = None
-my_next_GA = None
-my_next_game = None
-original_game = None
-# game loop
-while True:
-
-
-    #while (True):
-    #    print(input(), file=sys.stderr)
+        game = Game(wolff, enemies, data_points)
 
     
-    x, y = [int(i) for i in input().split()]
-    wolff_position = Point(x, y)
-    wolff = Wolff(0, wolff_position)
+
+
+        
+
+def stochastic_solution():
+    loop_count = 0
+    my_next_game = None
+    original_game = None
+    while True:
+        x, y = [int(i) for i in input().split()]
+        wolff_position = Point(x, y)
+        wolff = Wolff(0, wolff_position)
+        
+        data_count = int(input())
+        data_points = []
+        for i in range(data_count):
+            data_id, data_x, data_y = [int(j) for j in input().split()]
+            data_position = Point(data_x, data_y)
+            data_points.append(Data_Point(data_id, data_position))
+            
+        enemy_count = int(input())
+        enemies = []
+        for i in range(enemy_count):
+            enemy_id, enemy_x, enemy_y, enemy_life = [int(j) for j in input().split()]
+            enemy_position = Point(enemy_x, enemy_y)
+            enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
+
+
+
+        game = Game(wolff, enemies, data_points)
+
+
+        if original_game == None:
+            original_game = game.copy()
+
+
+
+        if (loop_count == 0):
+
+            start_time = time.time()
+            best_solution = GAIndividual(0)
+            best_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH)
+            print("stand and deliver: " + str(best_solution.fitness), file=sys.stderr)
+            best_solution.reset_reading()
+
+            evaluated = 0
+            print("start guessing " + str(start_time), file=sys.stderr)
+            while (time.time() - start_time < FIRST_TIME_LIMIT):
+                next_solution = GAIndividual(STODEPTH)
+                next_solution.randomize()
+                next_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH)
+                if (next_solution.fitness > best_solution.fitness):
+                    best_solution = next_solution
+                evaluated += 1                    
+            print("stop guessing " + str(time.time()), file=sys.stderr)
+            print(str(evaluated) + " guesses evaluated", file=sys.stderr)
+            print("best fitness: " + str(best_solution.fitness), file=sys.stderr)
+            
+            best_solution.reset_reading()
+            game.simulate(best_solution.my_strategy, STODEPTH)
+            best_solution.reset_reading()
+            
+            my_next_game = game
+            next_best_solution = best_solution
+            
+
+
+        else:        
+
+
+            
+            evaluated = 0
+            start_time = time.time()
+            print("start guessing " + str(start_time), file=sys.stderr)
+            while (time.time() - start_time < SUBSEQUENT_TIME_LIMIT):
+                next_solution = GAIndividual(STODEPTH)
+                next_solution.randomize()
+                next_solution.evaluate_fitness_on_game(my_next_game.copy(), EVAL_DEPTH)
+                next_solution.reset_reading()
+                if (next_solution.fitness > next_best_solution.fitness):
+                    next_best_solution = next_solution
+                evaluated += 1                    
+            print("stop guessing " + str(time.time()), file=sys.stderr)
+            print(str(evaluated) + " guesses evaluated", file=sys.stderr)
+            print("best fitness: " + str(next_best_solution.fitness), file=sys.stderr)
+
+            if (loop_count % GADEPTH == 0):
+                print ("NEXT BEST GUESS", file=sys.stderr)
+                best_solution = next_best_solution
+                
+                
+                my_next_game.simulate(next_best_solution.copy().my_strategy, STODEPTH)
+                
+                
+                
+                next_best_solution = best_solution
+                
+
+
+        # MOVE x y or SHOOT id
+        this_turn_move = best_solution.my_strategy(original_game)
+        print(original_game.score(), file=sys.stderr)
+        original_game.simulate(lambda input_game: this_turn_move, 1)
+        print(this_turn_move.get_string())
+        loop_count += 1
     
-    data_count = int(input())
-    data_points = []
-    for i in range(data_count):
-        data_id, data_x, data_y = [int(j) for j in input().split()]
-        data_position = Point(data_x, data_y)
-        data_points.append(Data_Point(data_id, data_position))
+
+
+    
+
+
+
+
+def genetic_algorithm_solution():
+    loop_count = 0
+    my_GA = None
+    my_next_GA = None
+    my_next_game = None
+    original_game = None
+    # game loop
+    while True:
+
+
+        #while (True):
+        #    print(input(), file=sys.stderr)
+
         
-    enemy_count = int(input())
-    enemies = []
-    for i in range(enemy_count):
-        enemy_id, enemy_x, enemy_y, enemy_life = [int(j) for j in input().split()]
-        enemy_position = Point(enemy_x, enemy_y)
-        enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
-
-
-
-    game = Game(wolff, enemies, data_points)
-    if original_game == None:
-        original_game = game.copy()
-
-
-    if (loop_count == 0):
-        gen = GAGeneration(GENERATION_SIZE)
-        gen.randomize()
+        x, y = [int(i) for i in input().split()]
+        wolff_position = Point(x, y)
+        wolff = Wolff(0, wolff_position)
         
-        start_time = time.time()
-        print("start revolving " + str(start_time), file=sys.stderr)
-        while (gen.revolve(game, EVAL_DEPTH, start_time, FIRST_TIME_LIMIT)):
-            continue
-        print("stop revolving " + str(time.time()), file=sys.stderr)
-        
-        my_GA = gen.members[0]
-        my_GA.reset_reading()
-        game.simulate(my_GA.my_strategy, GADEPTH)
-        my_GA.reset_reading()
-        
-        my_next_game = game
+        data_count = int(input())
+        data_points = []
+        for i in range(data_count):
+            data_id, data_x, data_y = [int(j) for j in input().split()]
+            data_position = Point(data_x, data_y)
+            data_points.append(Data_Point(data_id, data_position))
+            
+        enemy_count = int(input())
+        enemies = []
+        for i in range(enemy_count):
+            enemy_id, enemy_x, enemy_y, enemy_life = [int(j) for j in input().split()]
+            enemy_position = Point(enemy_x, enemy_y)
+            enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
 
-        gen = GAGeneration(GENERATION_SIZE)
-        gen.randomize()
 
-    else:        
 
-        start_time = time.time()
-        print("start revolving " + str(start_time), file=sys.stderr)
-        while (gen.revolve(my_next_game, EVAL_DEPTH, start_time, SUBSEQUENT_TIME_LIMIT)):
-            continue
-        print("stop revolving " + str(time.time()), file=sys.stderr)
+        game = Game(wolff, enemies, data_points)
 
-        if (loop_count % GADEPTH == 0):
-            print ("NEXT GA", file=sys.stderr)
+        if original_game == None:
+            original_game = game.copy()
+
+
+        if (loop_count == 0):
+            gen = GAGeneration(GENERATION_SIZE)
+            gen.randomize()
+            
+            start_time = time.time()
+            print("start revolving " + str(start_time), file=sys.stderr)
+            while (gen.revolve(game, EVAL_DEPTH, start_time, FIRST_TIME_LIMIT)):
+                continue
+            print("stop revolving " + str(time.time()), file=sys.stderr)
+            
             my_GA = gen.members[0]
             my_GA.reset_reading()
-            my_next_game.simulate(my_GA.my_strategy, GADEPTH)
+            game.simulate(my_GA.my_strategy, GADEPTH)
             my_GA.reset_reading()
+            
+            my_next_game = game
 
             gen = GAGeneration(GENERATION_SIZE)
             gen.randomize()
 
+        else:        
 
-    # MOVE x y or SHOOT id
-    this_turn_move = my_GA.my_strategy(original_game)
-    original_game.simulate(lambda input_game: this_turn_move, 1)
-    print(original_game.score(), file=sys.stderr)
-    print(this_turn_move.get_string())
-    loop_count += 1
+            start_time = time.time()
+            print("start revolving " + str(start_time), file=sys.stderr)
+            while (gen.revolve(my_next_game, EVAL_DEPTH, start_time, SUBSEQUENT_TIME_LIMIT)):
+                continue
+            print("stop revolving " + str(time.time()), file=sys.stderr)
+
+            if (loop_count % GADEPTH == 0):
+                print ("NEXT GA", file=sys.stderr)
+                my_GA = gen.members[0]
+                my_GA.reset_reading()
+                my_next_game.simulate(my_GA.my_strategy, GADEPTH)
+                my_GA.reset_reading()
+
+                gen = GAGeneration(GENERATION_SIZE)
+                gen.randomize()
+
+
+        # MOVE x y or SHOOT id
+        this_turn_move = my_GA.my_strategy(original_game)
+        original_game.simulate(lambda input_game: this_turn_move, 1)
+        print(original_game.score(), file=sys.stderr)
+        #print(game.score(), file=sys.stderr)
+        print(this_turn_move.get_string())
+        loop_count += 1
 
 
 
-
+stochastic_solution()
