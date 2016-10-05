@@ -19,11 +19,11 @@ GATURNOVER = 0.9
 GAFLUKES = 0.15
 GANEWCOMERS = 0.15
 
-MOVE_BIAS = 0.5
+MOVE_BIAS = 0.7
 FULL_SPEED_BIAS = 0.25
-SHOOT_NEAREST_BIAS = 0.2
+SHOOT_NEAREST_BIAS = 0.3
 
-MUTATE_TWEAK_CHANCE = 0.15
+MUTATE_TWEAK_CHANCE = 0.16
 MUTATE_TWEAK_POWER = 0.08
 MUTATE_RANDOMIZE_CHANCE = 0.14
 
@@ -141,16 +141,14 @@ class GAIndividual():
 
 
             move_target = game.wolff.position.point_distance_in(move_magnitude, move_direction)
-            if (game.wolff.position.distance_to(move_target) > 1002):
-                print(game.wolff.position.x, game.wolff.position.y, move_target.x, move_target.y, move_magnitude, move_direction, next_four_genes[2])
-
+            
             #enemy, distance
             nearest_enemy = (game.enemies[0], float('inf'))
             for enemy in game.enemies:
                 distance_to_enemy = game.wolff.position.distance_to(enemy.position)
                 if distance_to_enemy < nearest_enemy[1]:
                     nearest_enemy = (enemy, distance_to_enemy)
-                    
+            #murderee = game.enemies[int(next_four_genes[3]*len(game.enemies))]
             murderee = nearest_enemy[0]
             if next_four_genes[3] > SHOOT_NEAREST_BIAS:
                 unbiased_value = ( (next_four_genes[3] - SHOOT_NEAREST_BIAS)/(1 - SHOOT_NEAREST_BIAS) )
@@ -208,7 +206,7 @@ class GAGeneration():
                 return False
             new_game = game.copy()
             member.evaluate_fitness_on_game(new_game, depth)
-            #print(member.fitness)
+
             fitness_sum += member.fitness
 
         if (emergency_stop_check()):
@@ -251,10 +249,11 @@ class GAGeneration():
         if (emergency_stop_check()):
             return False
         
-        
+
 
         best_member = self.best_member()
         survivors.append(best_member)
+
 
 
         if (emergency_stop_check()):
@@ -491,7 +490,6 @@ class Move():
         if self.move_type == SHOOT:
             result = "SHOOT" + " " + str(self.target.game_id)
         return result
-
 
 
 
