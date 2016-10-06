@@ -530,6 +530,7 @@ def stochastic_solution():
             print("time failure: ", time.time(), file=sys.stderr)
             this_turn_move = stand_and_deliver(input_game)
             print(this_turn_move.get_string())
+            loop_count += 1
 
 
     
