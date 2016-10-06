@@ -163,38 +163,63 @@ class Individual():
 
 
 
-
+memoized_distance_to = {}
+memoized_square_distance_to = {}
+memoized_direction_to = {}
+memoized_point_distance_towards = {}
+memoized_point_distance_in = {}
 class Point():
     def __init__(self, x, y):
         self.x = int(x)
         self.y = int(y)
 
     def distance_to(self, b):
-        a = self
-        da = a.x-b.x
-        db = a.y-b.y
-        d = math.sqrt(da**2 + db**2)
+        key = (self.x, self.y, b.x, b.y)
+        if key in memoized_distance_to:
+            return memoized_distance_to[key]
+        d = math.sqrt(self.square_distance_to(b))
+        memoized_distance_to[key] = d
         return d
 
     def square_distance_to(self, b):
+        key = (self.x, self.y, b.x, b.y)
+        if key in memoized_square_distance_to:
+            return memoized_square_distance_to[key]
         a = self
         da = a.x-b.x
         db = a.y-b.y
-        return da**2 + db**2
+        d = da**2 + db**2
+        memoized_square_distance_to[key] = d
+        return d
         
     def direction_to(self, b):
+        key = (self.x, self.y, b.x, b.y)
+        if key in memoized_direction_to:
+            return memoized_direction_to[key]
         opposite = b.y-self.y
         adjacent = b.x-self.x
-        return math.atan2(opposite, adjacent)
+        angle = math.atan2(opposite, adjacent)
+        memoized_direction_to[key] = angle
+        return angle
 
     def point_distance_towards(self, units, target):
+        key = (self.x, self.y, target.x, target.y, units)
+        if key in memoized_point_distance_towards:
+            return memoized_point_distance_towards[key]
         angle = self.direction_to(target)
-        return self.point_distance_in(units, angle)
+        d = self.point_distance_in(units, angle)
+        memoized_point_distance_towards[key] = d
+        return d
 
     def point_distance_in(self, units, angle):
+        key = (self.x, self.y, units, angle)
+        if key in memoized_point_distance_in:
+            return memoized_point_distance_in[key]
         y = self.y + math.sin(angle)*units
         x = self.x + math.cos(angle)*units
-        return (Point(x, y))
+        point = (Point(x, y))
+        memoized_point_distance_in[key] = point
+        return point
 
     def copy(self):
         return Point(self.x, self.y)
@@ -238,9 +263,11 @@ class Enemy(Unit):
 
     def approach_target(self):
         end = None
+        target_reached = False
         target = self.target_data_point.position
         if self.position.square_distance_to(target) <= self.speed**2:
             end = target
+            target_reached = True
         else:
             end = self.position.point_distance_in(self.speed, self.facing)
         if (end.x < 0):
@@ -252,6 +279,7 @@ class Enemy(Unit):
         if (end.y > HEIGHT):
             end.y = HEIGHT
         self.position = end
+        return target_reached
         #self.distance_to_target -= self.speed
         #if self.distance_to_target < 0:
         #    self.position = self.target_data_point.position.copy()
@@ -264,9 +292,11 @@ class Enemy(Unit):
         self.target_data_point = min(data_points, key = distance_to_data_point)
         self.facing = self.position.direction_to(self.target_data_point.position)
         self.distance_to_target = self.position.distance_to(self.target_data_point.position)
+        self.target_data_point.targeters.append(self)
 
     def copy(self):
         return Enemy(self.game_id, self.position, self.health)
+
         
 
 
@@ -284,10 +314,14 @@ class Wolff(Unit):
 class Data_Point(Unit):
     def __init__(self, game_id, position):
         super().__init__(game_id, position, 0)
+        self.targeters = []
 
     def copy(self):
         return Data_Point(self.game_id, self.position)
 
+    def clear_from_targeters(self):
+        for targeter in self.targeters:
+            targeter.target_data_point = None
 
 
 class Game():
@@ -322,10 +356,12 @@ class Game():
 
     def do_move(self, move):
         #enemies move towards their targets
+        collected_data_points = set()
         for enemy in self.enemies:
             if enemy.target_data_point == None:
                 enemy.set_target_data_point(self.data_points)
-            enemy.approach_target()
+            if (enemy.approach_target()):
+                collected_data_points.add(enemy.target_data_point)
             #enemy.move_toward(enemy.target_data_point.position)
             
         #if a move command was given, Wolff moves towards his target            
@@ -348,16 +384,10 @@ class Game():
             if (move.target.health <= 0):
                 self.enemies.remove(move.target)
 
-        #enemies collect data points they share coordinates with
-        collected_data_points = set()
-        for enemy in self.enemies:
-            if enemy.position == enemy.target_data_point.position:
-                collected_data_points.add(enemy.target_data_point)
+        #enemies collect data points they arrived at
         for collected_data_point in collected_data_points:
             self.data_points.remove(collected_data_point)
-            for enemy in self.enemies:
-                if (enemy.target_data_point == collected_data_point):
-                    enemy.target_data_point = None
+            collected_data_point.clear_from_targeters()
 
         #If all data points are collected by the enemies, the game ends.
         if len(self.data_points) == 0:
