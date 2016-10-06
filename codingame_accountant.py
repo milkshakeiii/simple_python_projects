@@ -5,8 +5,11 @@ import time
 
 
 
-FIRST_TIME_LIMIT = 0.98
-SUBSEQUENT_TIME_LIMIT = 0.08
+FIRST_TIME_LIMIT = 0.935
+FIRST_TIME_CRIT = 0.960
+SUBSEQUENT_TIME_LIMIT = 0.035
+SUBSEQUENT_TIME_CRIT = 0.06
+SUPER_CRIT_REMAINDER = 0.025
 GENERATION_SIZE = 5
 
 
@@ -118,10 +121,11 @@ class GAIndividual():
                 self.genes[i] = random.random()
         
 
-    def evaluate_fitness_on_game(self, game, depth):
+    def evaluate_fitness_on_game(self, game, depth, time_remaining):
         self.reset_reading()
-        game.simulate(self.my_strategy, depth)
-        self.fitness = game.score()
+        if (not game.simulate(self.my_strategy, depth, time_remaining)):
+            self.fitness = game.score()
+
         #print(self.fitness)
         return self.fitness
 
@@ -507,12 +511,23 @@ class Game():
         if len(self.enemies) == 0:
             self.won = True
                 
-    def simulate(self, strategy, depth):
+    def simulate(self, strategy, depth, time_remaining):
+        start_time = time.time()
         depth_simulated = 0
         while (not self.won and not self.lost and depth_simulated < depth):
+            time_elapsed = time.time() - start_time
+            if (time_elapsed > time_remaining):
+                print ("Eep! Time!", time.time(), file=sys.stderr)
+                return True
+            
             depth_simulated += 1
             next_move = strategy(self)
             self.do_move(next_move)
+
+            
+            
+
+        return False
             
             
 
@@ -571,6 +586,7 @@ def stochastic_solution():
     loop_count = 0
     my_next_game = None
     original_game = None
+    time_failure = False
     while True:
 
         #############################READ INPUT##############
@@ -592,11 +608,12 @@ def stochastic_solution():
             enemy_position = Point(enemy_x, enemy_y)
             enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
 
-
+        turn_start = time.time()
+        print("turn begins at ", turn_start, file=sys.stderr)
 
         game = Game(wolff, enemies, data_points)
-
-
+        input_game = game.copy()
+        
         if original_game == None:
             original_game = game.copy()
 
@@ -606,7 +623,7 @@ def stochastic_solution():
 
             start_time = time.time()
             best_solution = GAIndividual(0)
-            best_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH)
+            best_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH, FIRST_TIME_LIMIT)
             print("stand and deliver: " + str(best_solution.fitness), file=sys.stderr)
             best_solution.reset_reading()
 
@@ -615,7 +632,9 @@ def stochastic_solution():
             while (time.time() - start_time < FIRST_TIME_LIMIT):
                 next_solution = GAIndividual(STODEPTH)
                 next_solution.randomize()
-                next_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH)
+                time_remaining = FIRST_TIME_LIMIT - (time.time() - start_time)
+                next_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH, time_remaining)
+                #print(time.time())
                 if (next_solution.fitness > best_solution.fitness):
                     best_solution = next_solution
                 evaluated += 1                    
@@ -624,7 +643,8 @@ def stochastic_solution():
             print("best fitness: " + str(best_solution.fitness), file=sys.stderr)
             
             best_solution.reset_reading()
-            game.simulate(best_solution.my_strategy, STODEPTH)
+            time_remaining = FIRST_TIME_CRIT - (time.time() - start_time)
+            time_failure = game.simulate(best_solution.my_strategy, STODEPTH, time_remaining)
             best_solution.reset_reading()
             
             my_next_game = game
@@ -632,7 +652,7 @@ def stochastic_solution():
             
 
 
-        else:        
+        elif not time_failure:        
 
 
             ###################################ON SUBSEQUENT CYCLES###############
@@ -642,7 +662,8 @@ def stochastic_solution():
             while (time.time() - start_time < SUBSEQUENT_TIME_LIMIT):
                 next_solution = GAIndividual(STODEPTH)
                 next_solution.randomize()
-                next_solution.evaluate_fitness_on_game(my_next_game.copy(), EVAL_DEPTH)
+                time_remaining = SUBSEQUENT_TIME_LIMIT - (time.time() - start_time)
+                next_solution.evaluate_fitness_on_game(my_next_game.copy(), EVAL_DEPTH, time_remaining)
                 next_solution.reset_reading()
                 if (next_solution.fitness > next_best_solution.fitness):
                     next_best_solution = next_solution
@@ -657,22 +678,33 @@ def stochastic_solution():
                 print ("NEXT BEST GUESS", file=sys.stderr)
                 best_solution = next_best_solution
                 
-                
-                my_next_game.simulate(next_best_solution.copy().my_strategy, STODEPTH)
+                time_remaining = SUBSEQUENT_TIME_CRIT - (time.time() - start_time)
+                time_failure = my_next_game.simulate(next_best_solution.copy().my_strategy, STODEPTH, time_remaining)
                 
                 
                 
                 next_best_solution = best_solution
+
+
+            
                 
 
-
-        # MOVE x y or SHOOT id
-        this_turn_move = best_solution.my_strategy(original_game)
-        original_game.simulate(lambda input_game: this_turn_move, 1)
-        print(original_game.score(), file=sys.stderr)
-        print(this_turn_move.get_string())
-        loop_count += 1
-    
+        if not time_failure:
+            # MOVE x y or SHOOT id
+            this_turn_move = best_solution.my_strategy(original_game)
+            turn_time = 0.1
+            if (loop_count == 0):
+                turn_time = 1
+            elapsed_time = time.time() - turn_start
+            time_remaining = turn_time - (elapsed_time + SUPER_CRIT_REMAINDER)
+            time_failure = original_game.simulate(lambda input_game: this_turn_move, 1, time_remaining)
+            print("turn over at ", time.time(), " score; ", original_game.score(), file=sys.stderr)
+            print(this_turn_move.get_string())
+            loop_count += 1
+        else:
+            print("time failure: ", time.time(), file=sys.stderr)
+            this_turn_move = stand_and_deliver(input_game)
+            print(this_turn_move.get_string())
 
 
     
