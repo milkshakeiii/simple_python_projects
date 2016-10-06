@@ -77,7 +77,7 @@ class Individual():
         self.fitness = -1
 
     def copy(self):
-        copy = GAIndividual(self.depth)
+        copy = Individual(self.depth)
         copy.genes = self.genes[:]
         copy.genes_read = self.genes_read
         copy.fitness = self.fitness
@@ -443,11 +443,11 @@ def stochastic_solution():
         ############################ON THE FIRST CYCLE################
         if (loop_count == 0):
 
-            game.compute_enemy_paths()
+            #game.compute_enemy_paths()
             original_game = game.copy()
 
             start_time = time.time()
-            best_solution = GAIndividual(0)
+            best_solution = Individual(0)
             best_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH, FIRST_TIME_LIMIT)
             print("stand and deliver: " + str(best_solution.fitness), file=sys.stderr)
             best_solution.reset_reading()
@@ -455,7 +455,7 @@ def stochastic_solution():
             evaluated = 0
             print("start guessing " + str(start_time), file=sys.stderr)
             while (time.time() - start_time < FIRST_TIME_LIMIT):
-                next_solution = GAIndividual(STODEPTH)
+                next_solution = Individual(STODEPTH)
                 next_solution.randomize()
                 time_remaining = FIRST_TIME_LIMIT - (time.time() - start_time)
                 next_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH, time_remaining)
@@ -485,7 +485,7 @@ def stochastic_solution():
             start_time = time.time()
             print("start guessing " + str(start_time), file=sys.stderr)
             while (time.time() - start_time < SUBSEQUENT_TIME_LIMIT):
-                next_solution = GAIndividual(STODEPTH)
+                next_solution = Individual(STODEPTH)
                 next_solution.randomize()
                 time_remaining = SUBSEQUENT_TIME_LIMIT - (time.time() - start_time)
                 next_solution.evaluate_fitness_on_game(my_next_game.copy(), EVAL_DEPTH, time_remaining)
