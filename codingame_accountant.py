@@ -10,34 +10,24 @@ FIRST_TIME_CRIT = 0.960
 SUBSEQUENT_TIME_LIMIT = 0.035
 SUBSEQUENT_TIME_CRIT = 0.06
 SUPER_CRIT_REMAINDER = 0.025
-GENERATION_SIZE = 5
 
 
-
-
-GADEPTH = 10
 STODEPTH = 10
 EVAL_DEPTH = float('inf')
+
 
 GATURNOVER = 0.9
 GAFLUKES = 0.15
 GANEWCOMERS = 0.15
 
+
 MOVE_BIAS = 0.7
 FULL_SPEED_BIAS = 0.25
 SHOOT_NEAREST_BIAS = 0.3
 
-MUTATE_TWEAK_CHANCE = 0.16
-MUTATE_TWEAK_POWER = 0.08
-MUTATE_RANDOMIZE_CHANCE = 0.14
-
-
-
 
 WIDTH = 16000
 HEIGHT = 9000
-
-
 
 
 MOVE = 0
@@ -66,7 +56,7 @@ def stand_and_deliver(game):
 
 
 
-class GAIndividual():
+class Individual():
     def __init__(self, depth):
         #every four genes represents one move
         #it consists of values from 0 to 1
@@ -149,17 +139,17 @@ class GAIndividual():
             move_target = game.wolff.position.point_distance_in(move_magnitude, move_direction)
             
             #enemy, distance
-            nearest_enemy = (game.enemies[0], float('inf'))
-            for enemy in game.enemies:
-                distance_to_enemy = game.wolff.position.square_distance_to(enemy.position)
-                if distance_to_enemy < nearest_enemy[1]:
-                    nearest_enemy = (enemy, distance_to_enemy)
-            #murderee = game.enemies[int(next_four_genes[3]*len(game.enemies))]
-            murderee = nearest_enemy[0]
-            if next_four_genes[3] > SHOOT_NEAREST_BIAS:
-                unbiased_value = ( (next_four_genes[3] - SHOOT_NEAREST_BIAS)/(1 - SHOOT_NEAREST_BIAS) )
-                random_enemy = int(next_four_genes[3] * len(game.enemies))
-                murderee = game.enemies[random_enemy]
+            #nearest_enemy = (game.enemies[0], float('inf'))
+            #for enemy in game.enemies:
+            #    distance_to_enemy = game.wolff.position.square_distance_to(enemy.position)
+            #    if distance_to_enemy < nearest_enemy[1]:
+            #        nearest_enemy = (enemy, distance_to_enemy)
+            murderee = game.enemies[int(next_four_genes[3]*len(game.enemies))]
+            #murderee = nearest_enemy[0]
+            #if next_four_genes[3] > SHOOT_NEAREST_BIAS:
+            #    unbiased_value = ( (next_four_genes[3] - SHOOT_NEAREST_BIAS)/(1 - SHOOT_NEAREST_BIAS) )
+            #    random_enemy = int(next_four_genes[3] * len(game.enemies))
+            #    murderee = game.enemies[random_enemy]
 
             next_move = None
             if next_move_type == MOVE:
@@ -169,139 +159,6 @@ class GAIndividual():
             return next_move
         else:
             return stand_and_deliver(game)
-
-
-    
-
-
-class GAGeneration():
-    def __init__(self, size):
-        self.size = size
-        self.members = []
-
-    def randomize(self):
-        for i in range(self.size):
-            new_individual = GAIndividual(GADEPTH)
-            new_individual.randomize()
-            self.members.append(new_individual)
-
-    def best_member(self):
-        return max(self.members, key=lambda member: member.fitness)
-
-    def revolve(self, game, depth, start_time, time_limit):
-
-        ###when we run into time trouble, restore the backup and return False to indicate we're done
-        members_backup = self.members[:]
-        def emergency_stop_check():
-            if (time.time() - start_time) > time_limit:
-                self.members = members_backup
-                return True
-
-        if (emergency_stop_check()):
-            return False
-        
-        individuals_to_keep = int((1-GATURNOVER) * len(self.members))
-        flukes_to_keep = int(GAFLUKES*len(self.members))
-        newcomers_to_add = int(GANEWCOMERS*len(self.members))
-
-
-        ###create a list of members weighted by their fitness
-        fitness_sum = 0
-        for member in self.members:
-            if (emergency_stop_check()):
-                return False
-            new_game = game.copy()
-            member.evaluate_fitness_on_game(new_game, depth)
-
-            fitness_sum += member.fitness
-
-        if (emergency_stop_check()):
-            return False
-
-        spaced_members = []
-        for member in self.members:
-            if fitness_sum == 0:
-                spaced_members.append((1, member))
-            else:
-                spaced_members.append((member.fitness/fitness_sum, member))
-
-        if (emergency_stop_check()):
-            return False
-
-        ###take some random members with better chances for fitter members
-        winning_numbers = []
-        survivors = []
-        while len(winning_numbers) < (individuals_to_keep - 1): #leave 1 space for the best
-            winning_numbers.append(random.random())
-        winning_numbers.sort()
-
-
-        if (emergency_stop_check()):
-            return False
-
-        
-        if (len(winning_numbers) > 0):
-            next_winner = winning_numbers.pop(0)
-            for spaced_member in spaced_members:
-                if (spaced_member[0] > next_winner):
-                    survivors.append(spaced_member[1])
-                    if (len(winning_numbers) == 0):
-                        break
-                    next_winner = winning_numbers.pop(0)
-                    if (len(winning_numbers) == 0):
-                        break
-        
-
-
-
-        if (emergency_stop_check()):
-            return False
-        
-
-
-        best_member = self.best_member()
-        survivors.append(best_member)
-
-
-
-        if (emergency_stop_check()):
-            return False
-
-        
-        flukes = []
-        while len(flukes) < flukes_to_keep:
-            flukes.append(self.members[int(random.random()*len(self.members))])
-
-        if (emergency_stop_check()):
-            return False
-            
-        newcomers = []
-        while len(newcomers) < newcomers_to_add:
-            newcomer = GAIndividual(GADEPTH)
-            newcomer.randomize()
-            newcomers.append(newcomer)
-
-        if (emergency_stop_check()):
-            return False
-        
-        new_generation = []
-        while len(new_generation) < self.size - individuals_to_keep - flukes_to_keep - newcomers_to_add:
-            if (emergency_stop_check()):
-                return False
-            random_parent_a = survivors[int(random.random() * len(survivors))]
-            random_parent_b = survivors[int(random.random() * len(survivors))]
-            new_individual = GAIndividual(depth)
-            new_individual.spawn_from([random_parent_a, random_parent_b])
-            new_individual.mutate()
-            new_generation.append(new_individual)
-        
-        self.members = survivors + new_generation + flukes + newcomers
-
-        print("sum: " + str(fitness_sum), file=sys.stderr)
-        print("max: " + str(best_member.fitness), file=sys.stderr)
-
-        return True
-        
 
 
 
@@ -524,9 +381,6 @@ class Game():
             next_move = strategy(self)
             self.do_move(next_move)
 
-            
-            
-
         return False
             
             
@@ -546,38 +400,6 @@ class Move():
         return result
 
 
-
-def simulated_annealing_solution():
-    while True:
-
-
-        #while (True):
-        #    print(input(), file=sys.stderr)
-
-        
-        x, y = [int(i) for i in input().split()]
-        wolff_position = Point(x, y)
-        wolff = Wolff(0, wolff_position)
-        
-        data_count = int(input())
-        data_points = []
-        for i in range(data_count):
-            data_id, data_x, data_y = [int(j) for j in input().split()]
-            data_position = Point(data_x, data_y)
-            data_points.append(Data_Point(data_id, data_position))
-            
-        enemy_count = int(input())
-        enemies = []
-        for i in range(enemy_count):
-            enemy_id, enemy_x, enemy_y, enemy_life = [int(j) for j in input().split()]
-            enemy_position = Point(enemy_x, enemy_y)
-            enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
-
-
-
-        game = Game(wolff, enemies, data_points)
-
-    
 
 
         
@@ -614,12 +436,15 @@ def stochastic_solution():
         game = Game(wolff, enemies, data_points)
         input_game = game.copy()
         
-        if original_game == None:
-            original_game = game.copy()
+        
+
 
 
         ############################ON THE FIRST CYCLE################
         if (loop_count == 0):
+
+            game.compute_enemy_paths()
+            original_game = game.copy()
 
             start_time = time.time()
             best_solution = GAIndividual(0)
@@ -709,95 +534,6 @@ def stochastic_solution():
 
     
 
-
-
-
-def genetic_algorithm_solution():
-    loop_count = 0
-    my_GA = None
-    my_next_GA = None
-    my_next_game = None
-    original_game = None
-    # game loop
-    while True:
-
-
-        #while (True):
-        #    print(input(), file=sys.stderr)
-
-        
-        x, y = [int(i) for i in input().split()]
-        wolff_position = Point(x, y)
-        wolff = Wolff(0, wolff_position)
-        
-        data_count = int(input())
-        data_points = []
-        for i in range(data_count):
-            data_id, data_x, data_y = [int(j) for j in input().split()]
-            data_position = Point(data_x, data_y)
-            data_points.append(Data_Point(data_id, data_position))
-            
-        enemy_count = int(input())
-        enemies = []
-        for i in range(enemy_count):
-            enemy_id, enemy_x, enemy_y, enemy_life = [int(j) for j in input().split()]
-            enemy_position = Point(enemy_x, enemy_y)
-            enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
-
-
-
-        game = Game(wolff, enemies, data_points)
-
-        if original_game == None:
-            original_game = game.copy()
-
-
-        if (loop_count == 0):
-            gen = GAGeneration(GENERATION_SIZE)
-            gen.randomize()
-            
-            start_time = time.time()
-            print("start revolving " + str(start_time), file=sys.stderr)
-            while (gen.revolve(game, EVAL_DEPTH, start_time, FIRST_TIME_LIMIT)):
-                continue
-            print("stop revolving " + str(time.time()), file=sys.stderr)
-            
-            my_GA = gen.members[0]
-            my_GA.reset_reading()
-            game.simulate(my_GA.my_strategy, GADEPTH)
-            my_GA.reset_reading()
-            
-            my_next_game = game
-
-            gen = GAGeneration(GENERATION_SIZE)
-            gen.randomize()
-
-        else:        
-
-            start_time = time.time()
-            print("start revolving " + str(start_time), file=sys.stderr)
-            while (gen.revolve(my_next_game, EVAL_DEPTH, start_time, SUBSEQUENT_TIME_LIMIT)):
-                continue
-            print("stop revolving " + str(time.time()), file=sys.stderr)
-
-            if (loop_count % GADEPTH == 0):
-                print ("NEXT GA", file=sys.stderr)
-                my_GA = gen.members[0]
-                my_GA.reset_reading()
-                my_next_game.simulate(my_GA.my_strategy, GADEPTH)
-                my_GA.reset_reading()
-
-                gen = GAGeneration(GENERATION_SIZE)
-                gen.randomize()
-
-
-        # MOVE x y or SHOOT id
-        this_turn_move = my_GA.my_strategy(original_game)
-        original_game.simulate(lambda input_game: this_turn_move, 1)
-        print(original_game.score(), file=sys.stderr)
-        #print(game.score(), file=sys.stderr)
-        print(this_turn_move.get_string())
-        loop_count += 1
 
 
 
