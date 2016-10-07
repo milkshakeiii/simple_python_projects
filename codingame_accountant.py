@@ -7,19 +7,18 @@ import time
 
 FIRST_TIME_LIMIT = 0.935
 FIRST_TIME_CRIT = 0.960
-SUBSEQUENT_TIME_LIMIT = 0.035
+SUBSEQUENT_TIME_LIMIT = 0.05
 SUBSEQUENT_TIME_CRIT = 0.06
-SUPER_CRIT_REMAINDER = 0.025
+SUPER_CRIT_REMAINDER = 0.02
 
 
 STODEPTH = 10
 EVAL_DEPTH = float('inf')
 
 
-GATURNOVER = 0.9
-GAFLUKES = 0.15
-GANEWCOMERS = 0.15
-
+MUTATE_TWEAK_CHANCE = 0.5
+MUTATE_TWEAK_POWER = 0.25
+MUTATE_RANDOMIZE_CHANCE = 1 - MUTATE_TWEAK_CHANCE
 
 MOVE_BIAS = 0.7
 FULL_SPEED_BIAS = 0.25
@@ -48,7 +47,7 @@ def stand_and_deliver(game):
 
     nearest_enemy = (game.enemies[0], float('inf'))
     for enemy in game.enemies:
-        distance_to_enemy = game.wolff.position.distance_to(enemy.position)
+        distance_to_enemy = game.wolff.position.square_distance_to(enemy.position)
         if distance_to_enemy < nearest_enemy[1]:
             nearest_enemy = (enemy, distance_to_enemy)
     
@@ -74,7 +73,7 @@ class Individual():
 
 
 
-        self.fitness = -1
+        self.fitness = float('-inf')
 
     def copy(self):
         copy = Individual(self.depth)
@@ -103,20 +102,25 @@ class Individual():
             self.genes.append(random_parent.genes[i])
 
     def mutate(self):
-        for i in range(len(self.genes)):
+        result = self.copy()
+        mutate_me = []
+        for i in range(9):
+            mutate_me.append(int(random.random()*len(result.genes)))
+        for i in mutate_me:
             chance = random.random()
             if (chance < MUTATE_TWEAK_CHANCE):
-                self.genes[i] = (self.genes[i] + random.random() * MUTATE_TWEAK_POWER - MUTATE_TWEAK_POWER/2)%1
+                result.genes[i] = (result.genes[i] + random.random() * MUTATE_TWEAK_POWER - MUTATE_TWEAK_POWER/2)%1
             if (chance > 1 - MUTATE_RANDOMIZE_CHANCE):
-                self.genes[i] = random.random()
+                result.genes[i] = random.random()
+        return result
         
 
-    def evaluate_fitness_on_game(self, game, depth, time_remaining):
+    def evaluate_fitness_on_game(self, game, depth, time_limit, turn_start):
         self.reset_reading()
-        if (not game.simulate(self.my_strategy, depth, time_remaining)):
+        if (not game.simulate(self.my_strategy, depth, time_limit, turn_start)):
             self.fitness = game.score()
 
-        #print(self.fitness)
+        #print(time.time())
         return self.fitness
 
     def my_strategy(self, game):
@@ -139,17 +143,17 @@ class Individual():
             move_target = game.wolff.position.point_distance_in(move_magnitude, move_direction)
             
             #enemy, distance
-            #nearest_enemy = (game.enemies[0], float('inf'))
-            #for enemy in game.enemies:
-            #    distance_to_enemy = game.wolff.position.square_distance_to(enemy.position)
-            #    if distance_to_enemy < nearest_enemy[1]:
-            #        nearest_enemy = (enemy, distance_to_enemy)
-            murderee = game.enemies[int(next_four_genes[3]*len(game.enemies))]
-            #murderee = nearest_enemy[0]
-            #if next_four_genes[3] > SHOOT_NEAREST_BIAS:
-            #    unbiased_value = ( (next_four_genes[3] - SHOOT_NEAREST_BIAS)/(1 - SHOOT_NEAREST_BIAS) )
-            #    random_enemy = int(next_four_genes[3] * len(game.enemies))
-            #    murderee = game.enemies[random_enemy]
+            nearest_enemy = (game.enemies[0], float('inf'))
+            for enemy in game.enemies:
+                distance_to_enemy = game.wolff.position.square_distance_to(enemy.position)
+                if distance_to_enemy < nearest_enemy[1]:
+                    nearest_enemy = (enemy, distance_to_enemy)
+            #murderee = game.enemies[int(next_four_genes[3]*len(game.enemies))]
+            murderee = nearest_enemy[0]
+            if next_four_genes[3] > SHOOT_NEAREST_BIAS:
+                unbiased_value = ( (next_four_genes[3] - SHOOT_NEAREST_BIAS)/(1 - SHOOT_NEAREST_BIAS) )
+                random_enemy = int(next_four_genes[3] * len(game.enemies))
+                murderee = game.enemies[random_enemy]
 
             next_move = None
             if next_move_type == MOVE:
@@ -159,6 +163,7 @@ class Individual():
             return next_move
         else:
             return stand_and_deliver(game)
+
 
 
 
@@ -334,6 +339,8 @@ class Game():
         self.starting_enemy_count = len(self.enemies)
         self.lost = False
         self.won = False
+        self.turns_simulated = 0
+        self.turn_lost = None
 
     def copy(self):
         copy = Game(Wolff(self.wolff.game_id, Point(self.wolff.position.x, self.wolff.position.y)),
@@ -348,13 +355,15 @@ class Game():
 
     def score(self):
         if self.lost:
-            return 0
+            return -300 + self.turn_lost
         DP = len(self.data_points)
         base = 100 * DP + 10 * (self.starting_enemy_count - len(self.enemies))
         bonus = DP * max(0, self.L - 3*self.S) * 3
         return base + bonus
 
     def do_move(self, move):
+        self.turns_simulated += 1
+        
         #enemies move towards their targets
         collected_data_points = set()
         for enemy in self.enemies:
@@ -372,6 +381,8 @@ class Game():
         for enemy in self.enemies:
             if self.wolff.position.distance_to(enemy.position) <= 2000:
                 self.lost = True
+                if self.turn_lost == None:
+                    self.turn_lost = self.turns_simulated
                 return
 
         #if a shoot command was given, Wolff shoots an enemy
@@ -398,15 +409,15 @@ class Game():
         if len(self.enemies) == 0:
             self.won = True
                 
-    def simulate(self, strategy, depth, time_remaining):
+    def simulate(self, strategy, depth, time_limit, turn_start):
         start_time = time.time()
         depth_simulated = 0
         while (not self.won and not self.lost and depth_simulated < depth):
-            time_elapsed = time.time() - start_time
-            if (time_elapsed > time_remaining):
-                print ("Eep! Time!", time.time(), file=sys.stderr)
+            if (time.time() - turn_start > time_limit):
+                #print ("Eep! Time!", time.time(), file=sys.stderr)
                 return True
-            
+
+            #print(time.time())
             depth_simulated += 1
             next_move = strategy(self)
             self.do_move(next_move)
@@ -432,9 +443,69 @@ class Move():
 
 
 
+def pure_random_spin(game, best_solution, time_limit, turn_start, loop_count):
+    evaluated = 0
+    print("start guessing " + str(time.time()), file=sys.stderr)
+    while (time.time() - turn_start < time_limit):
+        next_solution = Individual(STODEPTH)
+        next_solution.randomize()
+        next_solution.evaluate_fitness_on_game(game.copy(), EVAL_DEPTH, time_limit, turn_start)
+        #print(time.time())
+        next_solution.reset_reading()
+        if (next_solution.fitness > best_solution.fitness):
+            best_solution = next_solution
+        evaluated += 1                    
+    print("stop guessing " + str(time.time()), file=sys.stderr)
+    print(str(evaluated) + " guesses evaluated", file=sys.stderr)
+    print("best fitness: " + str(best_solution.fitness), file=sys.stderr)
+    return best_solution
+
+
+
+def simulated_annealing(game, best_s, time_limit, turn_start, loop_count):
+    #print(best_s, best_s.genes[0])
+    
+    def T():
+        if loop_count == 0:
+            portion_remaining = (time_limit-(time.time()-turn_start))/time_limit
+        else:
+            overall_time_limit = 1
+            overall_time_elapsed = ((loop_count-1)%10*0.1 + time.time()-turn_start)
+            portion_remaining = (overall_time_limit-overall_time_elapsed)/overall_time_limit
+        return 100*(portion_remaining**4)
+
+    def P(sfit, snewfit, T):
+        difference = snewfit-sfit
+        if difference > 0:
+            return 1
+        return math.e**(difference/T)
+
+    s = best_s
+    s.evaluate_fitness_on_game(game.copy(), EVAL_DEPTH, time_limit, turn_start)
+    s.reset_reading()
+    
+    evaluated = 0
+    print("start guessing " + str(time.time()), file=sys.stderr)
+    while (time.time() - turn_start < time_limit):
+        snew = s.mutate()
+        snew.evaluate_fitness_on_game(game.copy(), EVAL_DEPTH, time_limit, turn_start)
+        snew.reset_reading()
+        evaluated += 1
+        #print(snew.fitness)
+        accept_chance = P(s.fitness, snew.fitness, T())
+        #print(T())
+        #print(P(10, 0, T()))
+        if accept_chance >= random.random():
+            s = snew
+        if (s.fitness>best_s.fitness):
+            print ("found a new best s! ", s.fitness, file=sys.stderr)
+            best_s = s
+    #print("stop guessing " + str(time.time()), file=sys.stderr)
+    #print(str(evaluated) + " guesses evaluated", file=sys.stderr)
+    return best_s
         
 
-def stochastic_solution():
+def solution(spin_for_best):
     loop_count = 0
     my_next_game = None
     original_game = None
@@ -473,37 +544,26 @@ def stochastic_solution():
         ############################ON THE FIRST CYCLE################
         if (loop_count == 0):
 
-            #game.compute_enemy_paths()
             original_game = game.copy()
 
-            start_time = time.time()
             best_solution = Individual(0)
-            best_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH, FIRST_TIME_LIMIT)
+            best_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH, FIRST_TIME_LIMIT, turn_start)
             print("stand and deliver: " + str(best_solution.fitness), file=sys.stderr)
             best_solution.reset_reading()
 
-            evaluated = 0
-            print("start guessing " + str(start_time), file=sys.stderr)
-            while (time.time() - start_time < FIRST_TIME_LIMIT):
-                next_solution = Individual(STODEPTH)
-                next_solution.randomize()
-                time_remaining = FIRST_TIME_LIMIT - (time.time() - start_time)
-                next_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH, time_remaining)
-                #print(time.time())
-                if (next_solution.fitness > best_solution.fitness):
-                    best_solution = next_solution
-                evaluated += 1                    
-            print("stop guessing " + str(time.time()), file=sys.stderr)
-            print(str(evaluated) + " guesses evaluated", file=sys.stderr)
-            print("best fitness: " + str(best_solution.fitness), file=sys.stderr)
+            best_spun_solution = Individual(STODEPTH)
+            best_spun_solution.randomize()
+            best_spun_solution = spin_for_best(original_game, best_spun_solution, FIRST_TIME_LIMIT, turn_start, loop_count)
+            best_solution = max(best_spun_solution, best_solution, key=lambda solution: solution.fitness)
             
             best_solution.reset_reading()
-            time_remaining = FIRST_TIME_CRIT - (time.time() - start_time)
-            time_failure = game.simulate(best_solution.my_strategy, STODEPTH, time_remaining)
+            time_failure = game.simulate(best_solution.my_strategy, STODEPTH, FIRST_TIME_CRIT, turn_start)
             best_solution.reset_reading()
             
             my_next_game = game
             next_best_solution = best_solution
+            best_spun_solution = Individual(STODEPTH)
+            best_spun_solution.randomize()
             
 
 
@@ -511,48 +571,39 @@ def stochastic_solution():
 
 
             ###################################ON SUBSEQUENT CYCLES###############
-            evaluated = 0
-            start_time = time.time()
-            print("start guessing " + str(start_time), file=sys.stderr)
-            while (time.time() - start_time < SUBSEQUENT_TIME_LIMIT):
-                next_solution = Individual(STODEPTH)
-                next_solution.randomize()
-                time_remaining = SUBSEQUENT_TIME_LIMIT - (time.time() - start_time)
-                next_solution.evaluate_fitness_on_game(my_next_game.copy(), EVAL_DEPTH, time_remaining)
-                next_solution.reset_reading()
-                if (next_solution.fitness > next_best_solution.fitness):
-                    next_best_solution = next_solution
-                evaluated += 1                    
-            print("stop guessing " + str(time.time()), file=sys.stderr)
-            print(str(evaluated) + " guesses evaluated", file=sys.stderr)
-            print("best fitness: " + str(next_best_solution.fitness), file=sys.stderr)
-
+            best_spun_solution = spin_for_best(my_next_game, best_spun_solution, SUBSEQUENT_TIME_LIMIT, turn_start, loop_count)
+            next_best_solution = max(best_spun_solution, next_best_solution, key=lambda solution: solution.fitness)
+            #print(time.time())
             #################WHEN ITS TIME TO SWITCH TO OUR NEXT STOCHASTIC SOLUTION############
             #every STODEPTH loops
             if (loop_count % STODEPTH == 0):
                 print ("NEXT BEST GUESS", file=sys.stderr)
                 best_solution = next_best_solution
+
                 
-                time_remaining = SUBSEQUENT_TIME_CRIT - (time.time() - start_time)
-                time_failure = my_next_game.simulate(next_best_solution.copy().my_strategy, STODEPTH, time_remaining)
+                time_failure = my_next_game.simulate(next_best_solution.copy().my_strategy, STODEPTH, SUBSEQUENT_TIME_CRIT, turn_start)
                 
                 
                 
                 next_best_solution = best_solution
+                best_spun_solution = Individual(STODEPTH)
+                best_spun_solution.randomize()
 
 
             
                 
 
         if not time_failure:
+            #print(time.time())
             # MOVE x y or SHOOT id
             this_turn_move = best_solution.my_strategy(original_game)
             turn_time = 0.1
             if (loop_count == 0):
                 turn_time = 1
-            elapsed_time = time.time() - turn_start
-            time_remaining = turn_time - (elapsed_time + SUPER_CRIT_REMAINDER)
-            time_failure = original_game.simulate(lambda input_game: this_turn_move, 1, time_remaining)
+            final_limit = turn_time - SUPER_CRIT_REMAINDER
+
+            #print("started simulating one turn at: ", time.time())
+            time_failure = original_game.simulate(lambda input_game: this_turn_move, 1, final_limit, turn_start)
             print("turn over at ", time.time(), " score; ", original_game.score(), file=sys.stderr)
             print(this_turn_move.get_string())
             loop_count += 1
@@ -568,4 +619,4 @@ def stochastic_solution():
 
 
 
-stochastic_solution()
+solution(simulated_annealing)
