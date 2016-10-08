@@ -498,7 +498,7 @@ def simulated_annealing(game, best_s, time_limit, turn_start, loop_count):
     s.reset_reading()
     
     evaluated = 0
-    print("start guessing " + str(time.time()), file=sys.stderr)
+#    print("start guessing " + str(time.time()), file=sys.stderr)
     while (time.time() - turn_start < time_limit):
         snew = s.mutate()
         snew.evaluate_fitness_on_game(game.copy(), EVAL_DEPTH, time_limit, turn_start)
@@ -511,7 +511,7 @@ def simulated_annealing(game, best_s, time_limit, turn_start, loop_count):
         if accept_chance >= random.random():
             s = snew
         if (s.fitness>best_s.fitness):
-            print ("found a new best s! ", s.fitness, file=sys.stderr)
+#            print ("found a new best s! ", s.fitness, file=sys.stderr)
             best_s = s
     #print("stop guessing " + str(time.time()), file=sys.stderr)
     #print(str(evaluated) + " guesses evaluated", file=sys.stderr)
@@ -548,7 +548,7 @@ def solution(spin_for_best):
             enemies.append(Enemy(enemy_id, enemy_position, enemy_life))
 
         turn_start = time.time()
-        print("turn begins at ", turn_start, file=sys.stderr)
+#        print("turn begins at ", turn_start, file=sys.stderr)
 
         game = Game(wolff, enemies, data_points)
         input_game = game.copy()
@@ -564,7 +564,7 @@ def solution(spin_for_best):
 
             best_solution = Individual(0)
             best_solution.evaluate_fitness_on_game(original_game.copy(), EVAL_DEPTH, FIRST_TIME_LIMIT, turn_start)
-            print("stand and deliver: " + str(best_solution.fitness), file=sys.stderr)
+#            print("stand and deliver: " + str(best_solution.fitness), file=sys.stderr)
             best_solution.reset_reading()
 
             best_spun_solution = Individual(STODEPTH)
@@ -593,7 +593,7 @@ def solution(spin_for_best):
             #################WHEN ITS TIME TO SWITCH TO OUR NEXT STOCHASTIC SOLUTION############
             #every STODEPTH loops
             if (loop_count % STODEPTH == 0):
-                print ("NEXT BEST GUESS", file=sys.stderr)
+#                print ("NEXT BEST GUESS", file=sys.stderr)
                 best_solution = next_best_solution
 
                 
@@ -625,9 +625,11 @@ def solution(spin_for_best):
         if not time_failure:
             
             ######HORRIBLE BROKEN TEST!!!!!!!!!##########################
-            if len(original_game.enemies) == 0:
-                this_turn_move = stand_and_deliver(input_game)
-                print(this_turn_move.get_string())
+            # len(original_game.enemies) == 0:
+            #    this_turn_move = stand_and_deliver(input_game)
+            #    print(this_turn_move.get_string())
+            #    loop_count += 1
+            #    continue
             ######HORRIBLE BROKEN TEST!!!!!!!!!##########################
             
             #print(time.time())
@@ -640,11 +642,11 @@ def solution(spin_for_best):
 
             #print("started simulating one turn at: ", time.time())
             time_failure = original_game.simulate(lambda input_game: this_turn_move, 1, final_limit, turn_start)
-            print("turn over at ", time.time(), " score; ", original_game.score(), file=sys.stderr)
+#            print("turn over at ", time.time(), " score; ", original_game.score(), file=sys.stderr)
             print(this_turn_move.get_string())
             loop_count += 1
         else:
-            print("time failure: ", time.time(), file=sys.stderr)
+#            print("time failure: ", time.time(), file=sys.stderr)
             this_turn_move = stand_and_deliver(input_game)
             print(this_turn_move.get_string())
             loop_count += 1
