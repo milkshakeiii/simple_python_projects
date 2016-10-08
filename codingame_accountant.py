@@ -368,12 +368,12 @@ class Game():
         self.turns_simulated += 1
         
         #enemies move towards their targets
-        collected_data_points = set()
+        collecting_enemies = []
         for enemy in self.enemies:
             if enemy.target_data_point == None:
                 enemy.set_target_data_point(self.data_points)
             if (enemy.approach_target()):
-                collected_data_points.add(enemy.target_data_point)
+                collecting_enemies.append(enemy)
             #enemy.move_toward(enemy.target_data_point.position)
             
         #if a move command was given, Wolff moves towards his target            
@@ -388,6 +388,7 @@ class Game():
                     self.turn_lost = self.turns_simulated
                 return
 
+        murderee = None
         #if a shoot command was given, Wolff shoots an enemy
         if (move.move_type == SHOOT):
             damage = self.wolff.shot_damage(move.target)
@@ -397,8 +398,13 @@ class Game():
             #enemies with zero life points are removed from play
             if (move.target.health <= 0):
                 self.enemies.remove(move.target)
+                murderee = move.target
 
         #enemies collect data points they arrived at
+        collected_data_points = set()
+        for collecting_enemy in collecting_enemies:
+            if collecting_enemy != murderee:
+                collected_data_points.add(collecting_enemy.target_data_point)
         for collected_data_point in collected_data_points:
             self.data_points.remove(collected_data_point)
             collected_data_point.clear_from_targeters()
@@ -504,7 +510,7 @@ def simulated_annealing(game, best_s, time_limit, turn_start, loop_count):
             print ("found a new best s! ", s.fitness, file=sys.stderr)
             best_s = s
     #print("stop guessing " + str(time.time()), file=sys.stderr)
-    print(str(evaluated) + " guesses evaluated", file=sys.stderr)
+    #print(str(evaluated) + " guesses evaluated", file=sys.stderr)
     return best_s
         
 
@@ -593,7 +599,20 @@ def solution(spin_for_best):
                 best_spun_solution.randomize()
 
 
-            
+ 
+
+        print(len(input_game.enemies), len(original_game.enemies), file=sys.stderr)
+        print(len(input_game.data_points), len(original_game.data_points), file=sys.stderr)
+        for i in range(len(input_game.enemies)):
+        #    if input_game.enemies[i].position != original_game.enemies[i].position:
+            print (input_game.enemies[i].position.x,
+                   input_game.enemies[i].position.y,
+                   original_game.enemies[i].position.x,
+                   original_game.enemies[i].position.y,
+                   input_game.enemies[i].game_id,
+                   original_game.enemies[i].game_id,
+                   #original_game.enemies[i].target_data_point.game_id,
+                   file=sys.stderr)           
                 
 
         if not time_failure:
