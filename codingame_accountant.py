@@ -274,7 +274,8 @@ class Enemy(Unit):
             end = target
             target_reached = True
         else:
-            end = self.position.point_distance_in(self.speed, self.facing)
+            #end = self.position.point_distance_in(self.speed, self.facing)
+            end = self.position.point_distance_towards(self.speed, self.target_data_point.position)
         if (end.x < 0):
             end.x = 0
         if (end.y < 0):
@@ -285,11 +286,13 @@ class Enemy(Unit):
             end.y = HEIGHT
         self.position = end
         return target_reached
-        #self.distance_to_target -= self.speed
-        #if self.distance_to_target < 0:
-        #    self.position = self.target_data_point.position.copy()
-        #else:
-        #    self.position = self.position.point_distance_in(self.speed, self.facing)
+##        self.distance_to_target -= self.speed
+##        if self.distance_to_target < 0:
+##            self.position = self.target_data_point.position
+##            return True
+##        else:
+##            self.position = self.position.point_distance_in(self.speed, self.facing)
+##            return False
 
     def set_target_data_point(self, data_points):
         def distance_to_data_point(data_point):
@@ -501,7 +504,7 @@ def simulated_annealing(game, best_s, time_limit, turn_start, loop_count):
             print ("found a new best s! ", s.fitness, file=sys.stderr)
             best_s = s
     #print("stop guessing " + str(time.time()), file=sys.stderr)
-    #print(str(evaluated) + " guesses evaluated", file=sys.stderr)
+    print(str(evaluated) + " guesses evaluated", file=sys.stderr)
     return best_s
         
 
