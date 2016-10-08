@@ -41,6 +41,9 @@ def dumb_strategy(game):
     return Move(SHOOT, game.enemies[0])
 
 
+def do_nothing(game):
+    
+    return Move(MOVE, game.wolff.position)
 
 
 def stand_and_deliver(game):
@@ -141,6 +144,7 @@ class Individual():
 
 
             move_target = game.wolff.position.point_distance_in(move_magnitude, move_direction)
+            
             
             #enemy, distance
             nearest_enemy = (game.enemies[0], float('inf'))
@@ -521,6 +525,9 @@ def solution(spin_for_best):
     time_failure = False
     while True:
 
+        #while True:
+        #    print(input(), file=sys.stderr)
+
         #############################READ INPUT##############
         x, y = [int(i) for i in input().split()]
         wolff_position = Point(x, y)
@@ -601,21 +608,28 @@ def solution(spin_for_best):
 
  
 
-        print(len(input_game.enemies), len(original_game.enemies), file=sys.stderr)
-        print(len(input_game.data_points), len(original_game.data_points), file=sys.stderr)
-        for i in range(len(input_game.enemies)):
-        #    if input_game.enemies[i].position != original_game.enemies[i].position:
-            print (input_game.enemies[i].position.x,
-                   input_game.enemies[i].position.y,
-                   original_game.enemies[i].position.x,
-                   original_game.enemies[i].position.y,
-                   input_game.enemies[i].game_id,
-                   original_game.enemies[i].game_id,
-                   #original_game.enemies[i].target_data_point.game_id,
-                   file=sys.stderr)           
+#        print(len(input_game.enemies), len(original_game.enemies), file=sys.stderr)
+#        print(len(input_game.data_points), len(original_game.data_points), file=sys.stderr)
+#        for i in range(len(input_game.enemies)):
+#            if input_game.enemies[i].position != original_game.enemies[i].position:
+#            print (input_game.enemies[i].position.x,
+#                   input_game.enemies[i].position.y,
+#                   original_game.enemies[i].position.x,
+#                   original_game.enemies[i].position.y,
+#                   input_game.enemies[i].game_id,
+#                   original_game.enemies[i].game_id,
+#                   #original_game.enemies[i].target_data_point.game_id,
+#                   file=sys.stderr)           
                 
 
         if not time_failure:
+            
+            ######HORRIBLE BROKEN TEST!!!!!!!!!##########################
+            if len(original_game.enemies) == 0:
+                this_turn_move = stand_and_deliver(input_game)
+                print(this_turn_move.get_string())
+            ######HORRIBLE BROKEN TEST!!!!!!!!!##########################
+            
             #print(time.time())
             # MOVE x y or SHOOT id
             this_turn_move = best_solution.my_strategy(original_game)
