@@ -16,9 +16,11 @@ STODEPTH = 10
 EVAL_DEPTH = float('inf')
 
 
+MUTATE_COUNT = 9
 MUTATE_TWEAK_CHANCE = 0.5
 MUTATE_TWEAK_POWER = 0.25
 MUTATE_RANDOMIZE_CHANCE = 1 - MUTATE_TWEAK_CHANCE
+
 
 MOVE_BIAS = 0.7
 FULL_SPEED_BIAS = 0.25
@@ -107,7 +109,7 @@ class Individual():
     def mutate(self):
         result = self.copy()
         mutate_me = []
-        for i in range(9):
+        for i in range(MUTATE_COUNT):
             mutate_me.append(int(random.random()*len(result.genes)))
         for i in mutate_me:
             chance = random.random()
@@ -386,7 +388,7 @@ class Game():
 
         #game over if an enemy is close enough to Wolff
         for enemy in self.enemies:
-            if self.wolff.position.distance_to(enemy.position) <= 2000:
+            if self.wolff.position.square_distance_to(enemy.position) <= 2000**2:
                 self.lost = True
                 if self.turn_lost == None:
                     self.turn_lost = self.turns_simulated
