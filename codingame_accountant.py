@@ -218,9 +218,9 @@ class Point():
         if key in memoized_point_distance_towards:
             return memoized_point_distance_towards[key]
         angle = self.direction_to(target)
-        d = self.point_distance_in(units, angle)
-        memoized_point_distance_towards[key] = d
-        return d
+        result = self.point_distance_in(units, angle)
+        memoized_point_distance_towards[key] = result
+        return result
 
     def point_distance_in(self, units, angle):
         key = (self.x, self.y, units, angle)
