@@ -7,6 +7,13 @@ import os.path
 old_events = BaseEventReader(filename='/Users/solbergh/Desktop/events.mat', common_root='', use_reref_eeg = False, eliminate_events_with_no_eeg=False).read()
 
 def add_anns_to_events_recarray(ann_folder_path, events_recarray):
+    if (len(events_recarray) == 0):
+        print ("Please pass in the recarray from convert_unity_jsonl_to_recarray")
+        return
+    
+    subject = events_recarray[0][0]
+    session = events_recarray[0][1]
+    
     files_in_folder = listdir(ann_folder_path)
     ann_files = [file for file in files_in_folder if file[-4:] == ".ann"]
     ann_files_to_start_time = {}
@@ -17,10 +24,15 @@ def add_anns_to_events_recarray(ann_folder_path, events_recarray):
             ann_files_to_start_time[inferred_ann_name] = event[15]
         if event[4] == "CUED_REC_CUE":
             inferred_ann_name = str(event[2]) + "-" + str(event[6]) + ".ann"
+            ann_files_to_start_time[inferred_ann_name] = event[15]
         if event[4] == "SR_START":
             inferred_ann_name = "store recall.ann"
+            ann_files_to_start_time[inferred_ann_name] = event[15]
         if event[4] == "FFR_START":
             inferred_ann_name = "final recall.ann"
+            ann_files_to_start_time[inferred_ann_name] = event[15]
+
+    new_events = []
 
     for ann_file in ann_files:
         ann_file_path = os.path.join(ann_folder_path, ann_file)
@@ -32,14 +44,36 @@ def add_anns_to_events_recarray(ann_folder_path, events_recarray):
         
         ann_lines = []
         with open(ann_file_path) as f:
+            trial = -999
+            split_index = 0
+            if '-' in ann_file:
+                split_index = ann_file.index('-')
+            else:
+                split_index = ann_file.index('.')
+            trial_string = ann_file[:split_index]
+            try:
+                trial = int(trial_string)
+            except ValueError:
+                pass
+            
             ann_lines = f.readlines()
         for line in ann_lines:
             line = line[:-1]
             if len(line) == 0 or line[0] == "#":
                 continue
             recall_data = line.split("\t") #time in wav file, word number, word
-            new_event_name = "REC_WORD"
-            print (recall_data)
+            type = "REC_WORD"
+            mstime = start_time + float(recall_data[0])
+            itemno = int(recall_data[1])
+            item = recall_data[2]
+            word_recarray_entry = (subject, session, trial, -999, type, item, -999, -999, -999, -999, -999, itemno, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            new_events.append(word_recarray_entry)
+
+    all_events = sorted(new_events + list(events_recarray), key = lambda event: event[15])
+    
+    new_recarray = np.array(all_events, dtype=[('subject', np.str_, 256), ('session', np.str_, 256), ('trial', int), ('serialPos', int), ('type', np.str_, 256), ('item', np.str_, 256), ('store', np.str_, 256), ('storeX', float), ('storeZ', float), ('presX', float), ('presZ', float), ('itemno', int), ('recalled', int), ('intruded', int), ('finalrecalled', int), ('mstime', int), ('rectime', float), ('intrusion', int), ('eegfile', float), ('eegoffset', int), ('micoffset', int), ('micfile', np.str_, 256), ('correctPointingDirection', float), ('submittedPointingDirection', float)])
+    
+    return new_recarray
 
 
 
@@ -136,7 +170,6 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
                 events_list.append(word_recarray_entry)
             if (cued_recall_stars_displayed):
                 cued_recall_cues_reported += 1
-                print (cued_recall_cues_reported)
                 if (cued_recall_cues_reported == 12):
                     cued_recall_prompt_displayed = False
                     cued_recall_stars_displayed = False
