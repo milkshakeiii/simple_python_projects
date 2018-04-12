@@ -179,8 +179,8 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
                 events_list.append(word_recarray_entry)
 
     if (len(last_four_text_clears) == 4):
-        sr_row = last_four_text_clears[1]
-        ffr_row = last_four_text_clears[3]
+        sr_row = last_four_text_clears[0]
+        ffr_row = last_four_text_clears[2]
         data = sr_row['data']
         subject = data['participant 1']
         mstime = int(sr_row.time)
