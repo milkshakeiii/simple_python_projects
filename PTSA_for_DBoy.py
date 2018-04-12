@@ -215,7 +215,7 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
             word_recarray_entry = (subject, data['session number'], data['trial number'], -999, 'CUED_REC_CUE', data['item'], data['store'], storeX, storeZ, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, "", -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "familiarization store displayed"):
-            word_recarray_entry = (subject, data['session number'], data['trial number'], -999, 'STORE_FAM', '-999', data['store name'], -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, "", -999, -999)
+            word_recarray_entry = (subject, data['session number'], -999, -999, 'STORE_FAM', '-999', data['store name'], -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, "", -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "final store recall recording start"):
             type = "SR_START"
@@ -232,6 +232,7 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
         if (row.type == "final object recall recording stop"):
             type = "FFR_STOP"
             word_recarray_entry = (subject, data['session number'], -999, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            events_list.append(word_recarray_entry)
         if (row.type == "object recall recording start"):
             type = "REC_START"
             word_recarray_entry = (subject, data['session number'], data['trial number'], -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
