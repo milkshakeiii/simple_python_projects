@@ -6,27 +6,26 @@ import json
 def plot_words_from_dir(directory):
     window = pg.GraphicsWindow()
     window.resize(2000, 500)
-    
-    for i in range(3):
-        words_file = directory + "/" + str(i) + ".words"
-        plot_unityepl(window, words_file)
- 
-    window.nextRow()
 
     for i in range(3):
-        ann_file = directory + "/" + str(i) + ".ann"
-        plot_ann(window, ann_file)
-
-    window.nextRow()
-
-    plot_json(window, directory, 3)
+        plot = window.addPlot(title = "VAD timings")
+        plot.setXRange(0, 30*1000)
+        plot.setYRange(-20, 20)
         
+        words_file = directory + "/" + str(i) + ".words"
+        plot_unityepl(plot, words_file)
+
+        ann_file = directory + "/" + str(i) + ".ann"
+        plot_ann(plot, ann_file)
+
+        plot_json(plot, directory, i)
+            
 
     pg.QtGui.QApplication.instance().exec_()
 
 
-def plot_json(window, directory, trials_to_plot):
-
+def plot_json(plot, directory, trial_to_plot):
+    print("pyepl")
     json_file_path = os.path.join(directory, "event_log.json")
     
     with open(json_file_path) as data_file:    
@@ -37,21 +36,23 @@ def plot_json(window, directory, trials_to_plot):
     trial_start = 0
     for event in json_data['events']:
         if event['event_label'] == "RETRIEVAL" and event["event_value"] == True:            
-            trials += 1
-            trial_start = event['orig_timestamp']
-            xsets = []
+            if (trials == trial_to_plot):
+                trial_start = event['orig_timestamp']
+                xsets = []
 
-        if event['event_label'] == "VOCALIZATION":
+        if event['event_label'] == "VOCALIZATION" and trials == trial_to_plot:
             within_recall_timestamp = event['orig_timestamp'] - trial_start
             xsets.append(int(within_recall_timestamp))
             
         if event['event_label'] == "RETRIEVAL" and event["event_value"] == False:
-            plot_by_xsets(xsets, "pyepl", window)
-            if (trials == trials_to_plot):
+            if (trials == trial_to_plot):
+                plot_by_xsets(xsets, "pyepl", plot, 3, pg.mkPen(color=(255, 0, 0), width=2))
                 break
+            trials += 1
 
 
-def plot_ann(window, ann_file):
+def plot_ann(plot, ann_file):
+    print("ann")
     ann_file_lines = []
     with open(ann_file) as f:
         ann_file_lines = f.readlines()
@@ -62,13 +63,14 @@ def plot_ann(window, ann_file):
     for line in ann_file_lines:
         xsets = line.split('\t')
         word_xsets.append(float(xsets[0]))
-        word_xsets.append(float(xsets[0])+1)
+        word_xsets.append(float(xsets[0])+50)
     word_xsets = [int(xset) for xset in word_xsets]
 
-    plot_by_xsets(word_xsets, ann_file, window)   
+    plot_by_xsets(word_xsets, ann_file, plot, 1, pg.mkPen(color=(0, 255, 0), width=2))   
 
 
-def plot_unityepl(window, words_file):
+def plot_unityepl(plot, words_file):
+    print("unityepl")
     words_file_lines = []
     with open(words_file) as f:
         words_file_lines = f.readlines()
@@ -79,17 +81,19 @@ def plot_unityepl(window, words_file):
     for line in words_file_lines:
         xsets = line.split(' ')
         word_xsets.append(float(xsets[0])*1000)
-        word_xsets.append(float(xsets[1])*1000)
+        if len(xsets) > 1:
+            word_xsets.append(float(xsets[1])*1000)
     word_xsets = [int(xset) for xset in word_xsets]
 
-    plot_by_xsets(word_xsets, words_file, window)
+    plot_by_xsets(word_xsets, words_file, plot, 2, pg.mkPen(color=(255, 255, 255), width=2))
 
 
-def plot_by_xsets(word_xsets, title, window):
+def plot_by_xsets(word_xsets, title, plot, one, pen):
     print(word_xsets)
     someone_speaking = False
+    segment_drawn = False
     speaking_by_ms = []
-
+    ms = []
     for i in range(1000*30):
         if (len(word_xsets) == 0):
             continue
@@ -97,12 +101,31 @@ def plot_by_xsets(word_xsets, title, window):
             word_xsets.pop(0)
             someone_speaking = not someone_speaking
         if someone_speaking:
-            speaking_by_ms.append(1)
+            speaking_by_ms.append(one)
+            ms.append(i)
+            segment_drawn = False
+        elif not segment_drawn:
+            segment_drawn = True
+            plot.plot(y=speaking_by_ms, x=ms, pen=pen)
+            speaking_by_ms = []
+            ms = []
+
+def plot_by_xsets_lines(word_xsets, title, plot, one, pen):
+    print(word_xsets)
+    someone_speaking = False
+    speaking_by_ms = []
+    for i in range(1000*30):
+        if (len(word_xsets) == 0):
+            continue
+        if word_xsets[0] == i:
+            word_xsets.pop(0)
+            someone_speaking = not someone_speaking
+        if someone_speaking:
+            speaking_by_ms.append(one)
         else:
-            speaking_by_ms.append(0)
-                      
-    word_plot = window.addPlot(title=title, y=speaking_by_ms)
-    word_plot.setXRange(0, 30*1000)
+            speaking_by_ms.append(one-1)
+
+    plot.plot(y=speaking_by_ms, pen=pen) 
 
  
 
