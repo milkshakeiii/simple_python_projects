@@ -6,6 +6,12 @@ import os.path
 
 old_events = BaseEventReader(filename='/Users/solbergh/Desktop/events.mat', common_root='', use_reref_eeg = False, eliminate_events_with_no_eeg=False).read()
 
+def get_syncpulse_times_list(jsonl_file_path):
+    events_dataframe = pandas.read_json(path_or_buf=jsonl_file_path, lines=True)
+    pulses = events_dataframe.loc[events_dataframe['type'] == 'Sync pulse begin']
+    pulse_times = pulses['time'].tolist()
+    return [int(pulse_time) for pulse_time in pulse_times]
+
 def add_anns_to_events_recarray(ann_folder_path, events_recarray):
     if (len(events_recarray) == 0):
         print ("Please pass in the recarray from convert_unity_jsonl_to_recarray")
