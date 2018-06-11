@@ -115,6 +115,7 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
     cued_recall_cues_reported = 0
     object_recall_prompt_displayed = False
     object_recall_stars_displayed = False
+    proceed_to_next_day_prompt_displayed = False
 
     recall_events_list = []
     events_list = []
@@ -146,7 +147,10 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
             storeZ = data['store position'][1]
             word_recarray_entry = (subject, session, trial, serialPos, type, item, store, storeX, storeZ, presX, presZ, itemno, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
-        if (row.type == "audio presentation finished") or (row.type == "store mappings"):
+        if (row.type == "proceed to next day prompt"):
+            proceed_to_next_day_prompt_displayed = True
+        if (row.type == "audio presentation finished") or (row.type == "store mappings") or (proceed_to_next_day_prompt_displayed and row.type == "text display cleared"):
+            proceed_to_next_day_prompt_displayed = False
             type = "pointing begins"
             word_recarray_entry = (subject, session, trial, serialPos, type, item, store, storeX, storeZ, presX, presZ, itemno, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
