@@ -146,7 +146,7 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
             storeZ = data['store position'][1]
             word_recarray_entry = (subject, session, trial, serialPos, type, item, store, storeX, storeZ, presX, presZ, itemno, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
-        if (row.type == "pointing begins"):
+        if (row.type == "audio presentation finished") or (row.type == "store mappings"):
             type = "pointing begins"
             word_recarray_entry = (subject, session, trial, serialPos, type, item, store, storeX, storeZ, presX, presZ, itemno, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
