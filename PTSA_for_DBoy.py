@@ -199,6 +199,12 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
         subject = data['participant 1']
         mstime = int(ffr_row.time)
         events_list.append((subject, session, -999, -999, "FFR_START", "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999))
+        unwanted_event = None
+        for event in events_list:
+            if (event[4] == "pointing begins"):
+                unwanted_event = event
+        events_list.remove(unwanted_event)
+    
     
 
     for index, row in new_events.iterrows():
@@ -209,47 +215,70 @@ def convert_unity_jsonl_to_recarray(jsonl_file_path):
             for event in events_list:
                 if event[4] == "CUED_REC_CUE" or event[4] == "SR_START" or event[4] == "FFR_START" or event[4] == "SR_STOP" or event[4] == "FFR_STOP" or event[4] == "REC_START":
                     unwanted_events.append(event)
-            for event in unwanted_events:
-                events_list.remove(event)
 
-        if (better_rec_start_found):
-            continue
+        if (row.type == "pointing begins"):
+            for event in events_list:
+                if event[4] == "pointing begins":
+                    unwanted_events.append(event)
+
+
+        for event in unwanted_events:
+            events_list.remove(event)
 
     for index, row in new_events.iterrows():
         data = new_events['data'][index]
         subject = data['participant 1']
         mstime = int(row.time)
+        item = ""
+        serialPos = -999
+        store = ""
+        storeX = -999
+        storeZ = -999
+        
+        if 'trial number' in data:
+            trial = data['trial number']
+        
+        if row.type == "object presentation begins":
+            item = data['item name']
+            serialPos = data['serial position']
+            store = data['store name']
+            storeX = data['store position'][0]
+            storeZ = data['store position'][1]
         if (row.type == "cued recall recording start"):
             storeX = data['store position'][0]
             storeZ = data['store position'][1]
-            word_recarray_entry = (subject, data['session number'], data['trial number'], -999, 'CUED_REC_CUE', data['item'], data['store'], storeX, storeZ, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, "", -999, -999)
+            word_recarray_entry = (subject, session, trial, -999, 'CUED_REC_CUE', data['item'], data['store'], storeX, storeZ, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, "", -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "familiarization store displayed"):
-            word_recarray_entry = (subject, data['session number'], -999, -999, 'STORE_FAM', '-999', data['store name'], -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, "", -999, -999)
+            word_recarray_entry = (subject, session, trial, -999, 'STORE_FAM', '-999', data['store name'], -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, "", -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "final store recall recording start"):
             type = "SR_START"
-            word_recarray_entry = (subject, data['session number'], -999, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            word_recarray_entry = (subject, session, trial, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "final object recall recording start"):
             type = "FFR_START"
-            word_recarray_entry = (subject, data['session number'], -999, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            word_recarray_entry = (subject, session, trial, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "final store recall recording stop"):
             type = "SR_STOP"
-            word_recarray_entry = (subject, data['session number'], -999, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            word_recarray_entry = (subject, session, trial, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "final object recall recording stop"):
             type = "FFR_STOP"
-            word_recarray_entry = (subject, data['session number'], -999, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            word_recarray_entry = (subject, session, trial, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "object recall recording start"):
             type = "REC_START"
-            word_recarray_entry = (subject, data['session number'], data['trial number'], -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            word_recarray_entry = (subject, session, trial, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
         if (row.type == "object recall recording stop"):
             type = "REC_STOP"
-            word_recarray_entry = (subject, data['session number'], data['trial number'], -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            word_recarray_entry = (subject, session, trial, -999, type, "", "", -999, -999, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
+            events_list.append(word_recarray_entry)
+        if (row.type == "pointing begins"):
+            type = "pointing begins"
+            word_recarray_entry = (subject, session, trial, serialPos, type, item, store, storeX, storeZ, -999, -999, -999, -999, -999, -999, mstime, -999, -999, -999, -999, -999, -999, -999, -999)
             events_list.append(word_recarray_entry)
 
     events_list = sorted(events_list, key = lambda event: event[15])
