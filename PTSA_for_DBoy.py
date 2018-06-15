@@ -6,11 +6,14 @@ import os.path
 
 old_events = BaseEventReader(filename='/Users/solbergh/Desktop/events.mat', common_root='', use_reref_eeg = False, eliminate_events_with_no_eeg=False).read()
 
-def get_syncpulse_times_list(jsonl_file_path):
+def get_syncpulse_times_list(jsonl_file_path, is_english_syncbox):
     events_dataframe = pandas.read_json(path_or_buf=jsonl_file_path, lines=True)
     pulses = events_dataframe.loc[events_dataframe['type'] == 'Sync pulse begin']
     pulse_times = pulses['time'].tolist()
-    return [int(pulse_time) for pulse_time in pulse_times]
+    if (is_english_syncbox): #penn (english) syncbox code logs the end of the pulse not the beginning, so subtract 500ms
+        return [int(pulse_time)-500 for pulse_time in pulse_times]
+    else:
+        return [int(pulse_time) for pulse_time in pulse_times]
 
 def add_anns_to_events_recarray(ann_folder_path, events_recarray):
     if (len(events_recarray) == 0):
