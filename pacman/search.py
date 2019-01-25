@@ -90,6 +90,23 @@ def greedy_strategy(neighbor_states, exploring_state, best_paths, explored_state
     return frontier, best_paths
 
 
+def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives):
+    for state in reversed(neighbor_states):
+        if state not in explored_states:
+            if state not in frontier:
+                frontier.insert(0, state)
+                best_paths[state] = best_paths[exploring_state] + [state[0]]
+            else:
+                old_best_path = best_paths[state]
+                current_path = best_paths[exploring_state] + [state[0]]
+                if len(current_path) < len(old_best_path):
+                    best_paths[state] = current_path
+                else:
+                    continue
+            
+    frontier = sorted(frontier, key = lambda state: len(best_paths[state]) + heuristic(state, objectives))
+    return frontier, best_paths
+
 def dot_heuristic(state, objectives):
     return state[1].count("0")
 
