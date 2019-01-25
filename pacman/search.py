@@ -32,6 +32,7 @@ def search(maze, searchMethod):
         "astar": astar,
     }.get(searchMethod)(maze)
 
+
 def general_pacman_search(strategy, maze):
     nodes_explored = 0
     start = maze.getStart()
@@ -40,40 +41,72 @@ def general_pacman_search(strategy, maze):
     forbidden_states = []
     
     while len(frontier) > 0:
-        exploring_path = frontier.pop(0)
+        exploring_node = frontier.pop(0)
         nodes_explored += 1
         
-        if len(exploring_path[1]) == len(objectives):
-            return_path = [(step[0], step[1]) for step in exploring_path[0]]
+        if len(exploring_node[1]) == len(objectives):
+            return_path = [(step[0], step[1]) for step in exploring_node[0]]
             return return_path, nodes_explored
         
-        new_neighbors = maze.getNeighbors(exploring_path[0][-1][0], exploring_path[0][-1][1])
+        new_neighbors = maze.getNeighbors(exploring_node[0][-1][0], exploring_node[0][-1][1])
         neighbor_states = []
         for neighbor in new_neighbors:
-            captured_objectives = copy.deepcopy(exploring_path[1])
+            captured_objectives = copy.deepcopy(exploring_node[1])
             if neighbor in objectives:
                 captured_objectives.add(neighbor)
             neighbor_states.append((neighbor, captured_objectives))
                 
-        allowable_neighbor_states = [neighbor for neighbor in neighbor_states if neighbor not in forbidden_states]
-        forbidden_states = forbidden_states + allowable_neighbor_states
-        frontier = strategy(allowable_neighbor_states, exploring_path, frontier, maze)
+        
+        frontier, forbidden_states = strategy(neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states)
 
     raise Exception("No route found")
 
 
 
-def bfs_strategy(append_us, exploring_path, frontier, maze):
-    for state in append_us:
-        frontier = frontier + [(exploring_path[0] + [state[0]], state[1])]
-    return frontier
+def bfs_strategy(neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
+    allowable_neighbor_states = [neighbor for neighbor in neighbor_states if neighbor not in forbidden_states]
+    forbidden_states = forbidden_states + allowable_neighbor_states
+    allowable_neighbor_nodes = [(exploring_node[0] + [state[0]], state[1]) for state in allowable_neighbor_states]
+    frontier = frontier + allowable_neighbor_nodes
+    return frontier, forbidden_states
 
-def dfs_strategy(append_us, exploring_path, frontier, maze):
-    for state in append_us:
-        frontier = [(exploring_path[0] + [state[0]], state[1])] + frontier
-    return frontier
 
-    
+def dfs_strategy(allowable_neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
+    forbidden_states = forbidden_states + allowable_neighbor_states
+    allowable_neighbor_nodes = [(exploring_node[0] + [state[0]], state[1]) for state in allowable_neighbor_states]
+    frontier = allowable_neighbor_nodes + frontier
+    return frontier, forbidden_states
+
+
+def greedy_strategy(allowable_neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
+    allowable_neighbor_nodes = [(exploring_node[0] + [state[0]], state[1]) for state in allowable_neighbor_states]
+    frontier = allowable_neighbor_nodes + frontier
+    frontier = sorted(frontier, key = lambda node:  heuristic(node, maze, objectives))
+    return frontier, forbidden_states
+
+
+def astar_strategy(neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
+    forbidden_states = forbidden_states + allowable_neighbor_states
+    allowable_neighbor_nodes = [(exploring_node[0] + [state[0]], state[1]) for state in allowable_neighbor_states]
+    frontier = allowable_neighbor_nodes + frontier
+    frontier = sorted(frontier, key = lambda node: len(node[0]) + heuristic(node, maze, objectives))
+    return frontier, forbidden_states
+
+
+
+def dot_heuristic(node, maze, objectives):
+    return len(objectives) - len(node[1])
+
+def heuristic(node, maze, objectives):
+    manhattan_sum = 0
+    current_square = node[0][-1]
+    remaining_objectives = [objective for objective in objectives if objective not in node[1]]
+    for objective in remaining_objectives:
+        manhattan_sum += abs(current_square[0] - objective[0])
+        manhattan_sum += abs(current_square[1] - objective[1])
+    return manhattan_sum
+
+
 
 def bfs(maze):
     
@@ -90,10 +123,10 @@ def dfs(maze):
 def greedy(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return [], 0
+    return general_pacman_search(greedy_strategy, maze)
 
 
 def astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return [], 0
+    return general_pacman_search(astar_strategy, maze)
