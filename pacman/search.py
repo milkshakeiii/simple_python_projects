@@ -36,7 +36,54 @@ def search(maze, searchMethod):
 def general_pacman_search(strategy, maze):
     nodes_explored = 0
     start = maze.getStart()
-    frontier = [ ([(start[0], start[1])], set()) ]
+    objectives = maze.getObjectives()
+
+    start_state = (start, "0"*len(objectives))
+    frontier = [start_state]
+    explored_states = []
+    best_paths = {start_state: [start]}
+
+    while len(frontier) > 0:
+        exploring_state = frontier.pop(0)
+        nodes_explored += 1
+        explored_states.append(exploring_state)
+
+        if (exploring_state[1].count('1') == len(objectives)):
+            return best_paths[exploring_state], nodes_explored
+
+        neighbors = maze.getNeighbors(exploring_state[0][0], exploring_state[0][1])
+        neighbor_states =[]
+        for neighbor in neighbors:
+            objectives_string = exploring_state[1]
+            for i in range(len(objectives)):
+                if neighbor == objectives[i]:
+                    objectives_string = objectives_string[:i] + "1" + objectives_string[i+1:]
+            neighbor_states.append((neighbor, objectives_string))
+
+        frontier, best_paths = strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, maze)
+
+    raise Exception("No route found")
+
+
+def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, maze):
+    for state in reversed(neighbor_states):
+        if state not in frontier and state not in explored_states:
+            frontier.append(state)
+            best_paths[state] = best_paths[exploring_state] + [state[0]]
+    return frontier, best_paths
+
+def dfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, maze):
+    for state in reversed(neighbor_states):
+        if state not in frontier and state not in explored_states:
+            frontier.insert(0, state)
+            best_paths[state] = best_paths[exploring_state] + [state[0]]
+    return frontier, best_paths
+
+
+def old_general_pacman_search(strategy, maze):
+    nodes_explored = 0
+    start = maze.getStart()
+    frontier = [ ([start], set()) ]
     objectives = maze.getObjectives()
     forbidden_states = []
     
@@ -62,8 +109,7 @@ def general_pacman_search(strategy, maze):
     raise Exception("No route found")
 
 
-
-def bfs_strategy(neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
+def old_bfs_strategy(neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
     allowable_neighbor_states = [neighbor for neighbor in neighbor_states if neighbor not in forbidden_states]
     forbidden_states = forbidden_states + allowable_neighbor_states
     allowable_neighbor_nodes = [(exploring_node[0] + [state[0]], state[1]) for state in allowable_neighbor_states]
@@ -71,7 +117,8 @@ def bfs_strategy(neighbor_states, exploring_node, frontier, maze, objectives, fo
     return frontier, forbidden_states
 
 
-def dfs_strategy(allowable_neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
+def old_dfs_strategy(neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
+    allowable_neighbor_states = [neighbor for neighbor in neighbor_states if neighbor not in forbidden_states]
     forbidden_states = forbidden_states + allowable_neighbor_states
     allowable_neighbor_nodes = [(exploring_node[0] + [state[0]], state[1]) for state in allowable_neighbor_states]
     frontier = allowable_neighbor_nodes + frontier
@@ -82,14 +129,6 @@ def greedy_strategy(allowable_neighbor_states, exploring_node, frontier, maze, o
     allowable_neighbor_nodes = [(exploring_node[0] + [state[0]], state[1]) for state in allowable_neighbor_states]
     frontier = allowable_neighbor_nodes + frontier
     frontier = sorted(frontier, key = lambda node:  heuristic(node, maze, objectives))
-    return frontier, forbidden_states
-
-
-def astar_strategy(neighbor_states, exploring_node, frontier, maze, objectives, forbidden_states):
-    forbidden_states = forbidden_states + allowable_neighbor_states
-    allowable_neighbor_nodes = [(exploring_node[0] + [state[0]], state[1]) for state in allowable_neighbor_states]
-    frontier = allowable_neighbor_nodes + frontier
-    frontier = sorted(frontier, key = lambda node: len(node[0]) + heuristic(node, maze, objectives))
     return frontier, forbidden_states
 
 
