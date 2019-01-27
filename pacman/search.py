@@ -23,6 +23,7 @@ files and classes when code is run, so be careful to not modify anything else.
 # searchMethod is the search method specified by --method flag (bfs,dfs,greedy,astar)
 
 import copy
+from collections import OrderedDict
 
 def search(maze, searchMethod):
     return {
@@ -39,20 +40,20 @@ def general_pacman_search(strategy, maze):
     objectives = maze.getObjectives()
 
     start_state = (start, "0"*len(objectives))
-    frontier = [start_state]
-    explored_states = []
+    frontier = OrderedDict([(start_state, heuristic(start_state, objectives))])
+    explored_states = {}
     best_paths = {start_state: [start]}
 
     while len(frontier) > 0:
-        exploring_state = frontier.pop(0)
+        exploring_state = frontier.popitem(0)[0]
         nodes_explored += 1
-        explored_states.append(exploring_state)
+        explored_states[exploring_state] = True
 
         if (exploring_state[1].count('1') == len(objectives)):
             return best_paths[exploring_state], nodes_explored
 
         neighbors = maze.getNeighbors(exploring_state[0][0], exploring_state[0][1])
-        neighbor_states =[]
+        neighbor_states = []
         for neighbor in neighbors:
             objectives_string = exploring_state[1]
             for i in range(len(objectives)):
@@ -68,7 +69,8 @@ def general_pacman_search(strategy, maze):
 def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives):
     for state in reversed(neighbor_states):
         if state not in frontier and state not in explored_states:
-            frontier.append(state)
+            frontier[state] = 0
+            frontier.move_to_end(state)
             best_paths[state] = best_paths[exploring_state] + [state[0]]
     return frontier, best_paths
 
@@ -76,7 +78,8 @@ def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, 
 def dfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives):
     for state in reversed(neighbor_states):
         if state not in frontier and state not in explored_states:
-            frontier.insert(0, state)
+            frontier[state] = 0
+            frontier.move_to_end(state, last=False)
             best_paths[state] = best_paths[exploring_state] + [state[0]]
     return frontier, best_paths
 
@@ -84,9 +87,9 @@ def dfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, 
 def greedy_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives):
     for state in reversed(neighbor_states):
         if state not in frontier and state not in explored_states:
-            frontier.insert(0, state)
             best_paths[state] = best_paths[exploring_state] + [state[0]]
-    frontier = sorted(frontier, key = lambda state: heuristic(state, objectives))
+            frontier[state] = heuristic(state, objectives) #greedy evaluation
+    frontier = OrderedDict([(key, frontier[key]) for key in sorted(frontier, key = lambda state: frontier[state])])
     return frontier, best_paths
 
 
@@ -94,8 +97,8 @@ def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states
     for state in reversed(neighbor_states):
         if state not in explored_states:
             if state not in frontier:
-                frontier.insert(0, state)
                 best_paths[state] = best_paths[exploring_state] + [state[0]]
+                frontier[state] = len(best_paths[state]) + heuristic(state, objectives) #astar evaluation
             else:
                 old_best_path = best_paths[state]
                 current_path = best_paths[exploring_state] + [state[0]]
@@ -104,7 +107,7 @@ def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states
                 else:
                     continue
             
-    frontier = sorted(frontier, key = lambda state: len(best_paths[state]) + heuristic(state, objectives))
+    frontier = OrderedDict([(key, frontier[key]) for key in sorted(frontier, key = lambda state: frontier[state])])
     return frontier, best_paths
 
 def dot_heuristic(state, objectives):
@@ -117,12 +120,13 @@ def heuristic(state, objectives):
         if state[1][i] == "0":
             remaining_objectives.append(objectives[i])
 
-    manhattan_sum = 0
+    manhattan_sums = []
     for objective in remaining_objectives:
-        manhattan_sum += abs(state[0][0] - objective[0])
-        manhattan_sum += abs(state[0][1] - objective[1])
+        manhattan_sums.append(abs(state[0][0] - objective[0]) + abs(state[0][1] - objective[1]))
 
-    return manhattan_sum
+    #print(state, 0 if len(manhattan_sums) == 0 else min(manhattan_sums) + state[1].count("0"))
+    return 0 if len(manhattan_sums) == 0 else min(manhattan_sums) + state[1].count("0")
+    #return 0 if len(manhattan_sums) == 0 else sum(manhattan_sums)
 
 
 
