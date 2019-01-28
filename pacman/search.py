@@ -90,7 +90,7 @@ def greedy_strategy(neighbor_states, exploring_state, best_paths, explored_state
         if state not in frontier and state not in explored_states:
             best_paths[state] = best_paths[exploring_state] + [state[0]]
             frontier[state] = heuristic(state, objectives) #greedy evaluation
-    frontier = OrderedDict([(key, frontier[key]) for key in sorted(frontier, key = lambda state: frontier[state])])
+    frontier = collections.OrderedDict([(key, frontier[key]) for key in sorted(frontier, key = lambda state: frontier[state])])
     return frontier, best_paths
 
 
@@ -99,7 +99,7 @@ def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states
         if state not in explored_states:
             if state not in frontier:
                 best_paths[state] = best_paths[exploring_state] + [state[0]]
-                frontier[state] = len(best_paths[state]) + ts_heuristic(state, objectives) #astar evaluation
+                frontier[state] = len(best_paths[state]) + naive_ts_heuristic(state, objectives) #astar evaluation
             else:
                 old_best_path = best_paths[state]
                 current_path = best_paths[exploring_state] + [state[0]]
@@ -115,6 +115,32 @@ def dot_heuristic(state, objectives):
     return state[1].count("0")
 
 
+def naive_ts_heuristic(state, objectives):
+    remaining_objectives = []
+    for i in range(len(objectives)):
+        if state[1][i] == "0":
+            remaining_objectives.append(objectives[i])
+
+    if len(remaining_objectives) == 0:
+        return 0
+
+    start = state[0]
+    total_steps = 0
+    while len(remaining_objectives) > 0:
+        nearest_objective = (-1, -1)
+        nearest_manhattan = float('inf')
+        for objective in remaining_objectives:
+            this_manhattan = manhattan(start, objective)
+            if this_manhattan < nearest_manhattan:
+                nearest_manhattan = this_manhattan
+                nearest_objective = objective
+        remaining_objectives.remove(nearest_objective)
+        total_steps += nearest_manhattan
+        start = nearest_objective
+
+    return total_steps
+
+
 #based on the held-karp algorithm
 def ts_heuristic(state, objectives):
     print(state, objectives)
@@ -126,18 +152,22 @@ def ts_heuristic(state, objectives):
     if len(remaining_objectives) == 0:
         return 0
 
-    subset_endpoints_to_pathlengths = {("0"*len(remaining_objectives), state[0]): 0}
-    for num_to_eat in range(1, len(remaining_objectives)+1):
+    subset_endpoints_to_pathlengths = {}
+
+    for objective in remaining_objectives:
+        subset_endpoints_to_pathlengths[objective_subset_string(remaining_objectives, [objective]), objective] = manhattan(state[0], objective)
+    
+    for num_to_eat in range(2, len(remaining_objectives)+1):
         for subset in itertools.combinations(remaining_objectives, num_to_eat):
-            subset = set(subset)
+            subset_string = objective_subset_string(objectives, subset)
             for endpoint in subset:
-                subsubset = copy.deepcopy(subset)
-                subsubset.remove(endpoint)
-                if len(subsubset) == 0:
-                    subsubset = set([state[0]])
+                subsubset = [square for square in subset if square != endpoint]
+                subsubset_string = objective_subset_string(remaining_objectives, subsubset)
                 best_option_cost = float('inf')
-                for preendpoint in subsubset:
-                    this_option_cost = subset_endpoints_to_pathlengths[objective_subset_string(remaining_objectives, subsubset), preendpoint] + manhattan(preendpoint, endpoint)
+                for preendpoint in subset:
+                    if preendpoint == endpoint:
+                        continue
+                    this_option_cost = subset_endpoints_to_pathlengths[subsubset_string, preendpoint] + manhattan(preendpoint, endpoint)
                     if this_option_cost < best_option_cost:
                         best_option_cost = this_option_cost
                 subset_endpoints_to_pathlengths[objective_subset_string(remaining_objectives, subset), endpoint] = best_option_cost
