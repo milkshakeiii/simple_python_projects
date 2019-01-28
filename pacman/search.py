@@ -30,7 +30,7 @@ def search(maze, searchMethod):
         "bfs": bfs,
         "dfs": dfs,
         "greedy": greedy,
-        "astar": astar,
+        "astar": astar
     }.get(searchMethod)(maze)
 
 
@@ -47,7 +47,7 @@ def general_pacman_search(strategy, maze):
     while len(frontier) > 0:
         exploring_state = frontier.popitem(0)[0]
         nodes_explored += 1
-        print (nodes_explored)
+        print(nodes_explored)
         explored_states[exploring_state] = True
 
         if (exploring_state[1].count('1') == len(objectives)):
@@ -99,7 +99,7 @@ def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states
         if state not in explored_states:
             if state not in frontier:
                 best_paths[state] = best_paths[exploring_state] + [state[0]]
-                frontier[state] = len(best_paths[state]) + naive_ts_heuristic(state, objectives) #astar evaluation
+                frontier[state] = len(best_paths[state]) + heuristic(state, objectives) #astar evaluation
             else:
                 old_best_path = best_paths[state]
                 current_path = best_paths[exploring_state] + [state[0]]
@@ -179,7 +179,7 @@ def objective_subset_string(objectives, subset):
             
 def manhattan(a, b):
     return abs(a[0]-b[0]) + abs(a[1]-b[1])
-        
+
 
 #from python docs https://docs.python.org/3/library/itertools.html#recipes
 def powerset(iterable):
@@ -218,7 +218,66 @@ def heuristic(state, objectives):
     #return 0 if len(manhattan_sums) == 0 else sum(manhattan_sums)
 
 
+#based on pseudocode from wikipedia A* page
+def reconstruct_path(came_from, state):
+    total_path = [state]
+    while state in came_from:
+        state = came_from[state]
+        total_path.append(state)
 
+    return [state[0] for state in total_path]
+
+
+#also based on pseudocode from wikipedia A* page
+def astar_search(maze):
+    nodes_explored = 0
+    start = maze.getStart()
+    objectives = maze.getObjectives()
+    start_state = (start, "0"*len(objectives))
+    
+    closed_set = []
+    open_set = [start_state]
+    came_from = {}
+    g_score = {}
+    f_score = {}
+
+    f_score[start_state] = heuristic(start_state, objectives)
+    g_score[start_state] = 0
+
+    while(len(open_set) > 0):
+        current = min(open_set, key = lambda state: f_score[state])
+        nodes_explored += 1
+        print(nodes_explored)
+        
+        if current[1].count('1') == len(objectives):
+            print (reconstruct_path(came_from, current), nodes_explored)
+            return reconstruct_path(came_from, current), nodes_explored
+
+        open_set.remove(current)
+        closed_set.append(current)
+
+        for neighbor in maze.getNeighbors(current[0][0], current[0][1]):
+            objective_string = current[1]
+            neighbor_state = (neighbor, objective_string)
+            if neighbor in objectives:
+                index = objectives.index(neighbor)
+                objective_string = objective_string[:index] + "1" + objective_string[index+1:]
+                neighbor_state = (neighbor, objective_string)
+
+            if neighbor_state in closed_set:
+                continue
+
+            tentative_gscore = g_score.get(current, float('inf')) + 1
+            if neighbor_state not in open_set:
+                open_set.append(neighbor_state)
+            elif tentative_gscore >= g_score[neighbor_state]:
+                continue
+
+            came_from[neighbor_state] = current
+            g_score[neighbor_state] = tentative_gscore
+            f_score[neighbor_state] = g_score[neighbor_state] + heuristic(neighbor_state, objectives)
+                
+    raise Exception("No path found")
 
 
 
@@ -244,3 +303,9 @@ def astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
     return general_pacman_search(astar_strategy, maze)
+
+
+def only_astar(maze):
+    # TODO: Write your code here
+    # return path, num_states_explored
+    return astar_search(maze)
