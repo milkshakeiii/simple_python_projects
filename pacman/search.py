@@ -89,7 +89,7 @@ def greedy_strategy(neighbor_states, exploring_state, best_paths, explored_state
     for state in reversed(neighbor_states):
         if state not in frontier and state not in explored_states:
             best_paths[state] = best_paths[exploring_state] + [state[0]]
-            frontier[state] = heuristic(state, objectives) #greedy evaluation
+            frontier[state] = dot_heuristic(state, objectives) #greedy evaluation
     frontier = collections.OrderedDict([(key, frontier[key]) for key in sorted(frontier, key = lambda state: frontier[state])])
     return frontier, best_paths
 
@@ -143,7 +143,6 @@ def naive_ts_heuristic(state, objectives):
 
 #based on the held-karp algorithm
 def ts_heuristic(state, objectives):
-    print(state, objectives)
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -215,7 +214,28 @@ def heuristic(state, objectives):
             farthest_objective = objective
 
     return nearest_manhattan + farthest_manhattan
-    #return 0 if len(manhattan_sums) == 0 else sum(manhattan_sums)
+
+
+def near_plus_one_heuristic(state, objectives):
+    remaining_objectives = []
+    for i in range(len(objectives)):
+        if state[1][i] == "0":
+            remaining_objectives.append(objectives[i])
+
+    if len(remaining_objectives) == 0:
+        return 0
+    
+    nearest_objective = (-1, -1)
+    nearest_manhattan = float('inf')
+    for objective in remaining_objectives:
+        this_manhattan = abs(state[0][0] - objective[0]) + abs(state[0][1] - objective[1])
+        if this_manhattan < nearest_manhattan:
+            nearest_manhattan = this_manhattan
+            nearest_objective = objective
+
+    remaining_objectives.remove(nearest_objective)
+    return nearest_manhattan + len(remaining_objectives)
+    
 
 
 #based on pseudocode from wikipedia A* page
