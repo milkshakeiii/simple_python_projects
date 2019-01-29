@@ -34,20 +34,24 @@ def search(maze, searchMethod):
     }.get(searchMethod)(maze)
 
 
-def general_pacman_search(strategy, maze):
+def general_pacman_search(strategy, heuristic, maze, quiet=False):
     nodes_explored = 0
     start = maze.getStart()
     objectives = maze.getObjectives()
 
-    start_state = (start, "0"*len(objectives))
-    frontier = collections.OrderedDict([(start_state, heuristic(start_state, objectives))])
+    start_state = (start, ''.join("1" if maze.getStart()==objective else "0" for objective in objectives))
+    frontier = collections.OrderedDict([(start_state, heuristic(start_state, maze, objectives))])
     explored_states = {}
     best_paths = {start_state: [start]}
 
     while len(frontier) > 0:
-        exploring_state = frontier.popitem(0)[0]
+        exploring_state_item = frontier.popitem(0)
+        exploring_state = exploring_state_item[0]
         nodes_explored += 1
-        print(nodes_explored)
+        if not quiet:
+            pass
+            #print(nodes_explored)
+            print(exploring_state_item[1])
         explored_states[exploring_state] = True
 
         if (exploring_state[1].count('1') == len(objectives)):
@@ -62,12 +66,12 @@ def general_pacman_search(strategy, maze):
                     objectives_string = objectives_string[:i] + "1" + objectives_string[i+1:]
             neighbor_states.append((neighbor, objectives_string))
 
-        frontier, best_paths = strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives)
+        frontier, best_paths = strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, maze, objectives, heuristic)
 
     raise Exception("No route found")
 
 
-def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives):
+def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, maze, objectives, heuristic):
     for state in reversed(neighbor_states):
         if state not in frontier and state not in explored_states:
             frontier[state] = 0
@@ -76,8 +80,8 @@ def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, 
     return frontier, best_paths
 
 
-def dfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives):
-    for state in reversed(neighbor_states):
+def dfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, maze, objectives, heuristic):
+    for state in neighbor_states:
         if state not in frontier and state not in explored_states:
             frontier[state] = 0
             frontier.move_to_end(state, last=False)
@@ -85,21 +89,21 @@ def dfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, 
     return frontier, best_paths
 
 
-def greedy_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives):
+def greedy_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, maze, objectives, heuristic):
     for state in reversed(neighbor_states):
         if state not in frontier and state not in explored_states:
             best_paths[state] = best_paths[exploring_state] + [state[0]]
-            frontier[state] = dot_heuristic(state, objectives) #greedy evaluation
+            frontier[state] = dot_heuristic(state, maze, objectives) #greedy evaluation
     frontier = collections.OrderedDict([(key, frontier[key]) for key in sorted(frontier, key = lambda state: frontier[state])])
     return frontier, best_paths
 
 
-def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, objectives):
+def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, maze, objectives, heuristic):
     for state in reversed(neighbor_states):
         if state not in explored_states:
             if state not in frontier:
                 best_paths[state] = best_paths[exploring_state] + [state[0]]
-                frontier[state] = len(best_paths[state]) + heuristic(state, objectives) #astar evaluation
+                frontier[state] = len(best_paths[exploring_state]) + heuristic(state, maze, objectives) #astar evaluation
             else:
                 old_best_path = best_paths[state]
                 current_path = best_paths[exploring_state] + [state[0]]
@@ -111,11 +115,11 @@ def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states
     frontier = collections.OrderedDict([(key, frontier[key]) for key in sorted(frontier, key = lambda state: frontier[state])])
     return frontier, best_paths
 
-def dot_heuristic(state, objectives):
+def dot_heuristic(state, maze, objectives):
     return state[1].count("0")
 
 
-def naive_ts_heuristic(state, objectives):
+def naive_ts_heuristic(state, maze, objectives):
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -142,7 +146,7 @@ def naive_ts_heuristic(state, objectives):
 
 
 #based on the held-karp algorithm
-def ts_heuristic(state, objectives):
+def ts_heuristic(state, maze, objectives):
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -173,21 +177,20 @@ def ts_heuristic(state, objectives):
 
     return min([subset_endpoints_to_pathlengths[objective_subset_string(remaining_objectives, remaining_objectives), endpoint] for endpoint in remaining_objectives])
 
-def objective_subset_string(objectives, subset):
+
+def objective_subset_string(objectives, maze, subset):
     return ''.join('1' if objective in subset else '0' for objective in objectives)
+
             
 def manhattan(a, b):
     return abs(a[0]-b[0]) + abs(a[1]-b[1])
 
 
-#from python docs https://docs.python.org/3/library/itertools.html#recipes
-def powerset(iterable):
-    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
-    s = list(iterable)
-    return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(len(s)+1))
+def no_heuristic(state, maze, objectives):
+    return 0
 
 
-def heuristic(state, objectives):
+def near_far_heuristic(state, maze, objectives):
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -216,7 +219,47 @@ def heuristic(state, objectives):
     return nearest_manhattan + farthest_manhattan
 
 
-def near_plus_one_heuristic(state, objectives):
+def bfs_near_far_heuristic(state, maze, objectives):
+    true_start = maze.getStart()
+    
+    remaining_objectives = []
+    for i in range(len(objectives)):
+        if state[1][i] == "0":
+            remaining_objectives.append(objectives[i])
+
+    if len(remaining_objectives) == 0:
+        return 0
+    
+    nearest_objective = (-1, -1)
+    nearest_distance = float('inf')
+    for objective in remaining_objectives:
+        maze.setStart(state[0])
+        maze.setObjectives([objective])
+        this_distance = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
+        if this_distance < nearest_distance:
+            nearest_distance = this_distance
+            nearest_objective = objective
+        maze.setStart(true_start)
+        maze.setObjectives(objectives)
+
+    remaining_objectives.remove(nearest_objective)
+    if len(remaining_objectives) == 0:
+        return nearest_distance
+    
+    farthest_distance = float('-inf')
+    for objective in remaining_objectives:
+        maze.setStart(nearest_objective)
+        maze.setObjectives([objective])
+        this_distance = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
+        if this_distance > farthest_distance:
+            farthest_distance = this_distance
+            farthest_objective = objective
+        maze.setStart(true_start)
+        maze.setObjectives(objectives)
+
+    return nearest_distance + farthest_distance
+
+def near_plus_one_heuristic(state, maze, objectives):
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -235,6 +278,23 @@ def near_plus_one_heuristic(state, objectives):
 
     remaining_objectives.remove(nearest_objective)
     return nearest_manhattan + len(remaining_objectives)
+
+
+def bfs_heuristic(state, maze, objectives):
+    actual_start = maze.getStart()
+
+    real_distances = []
+    for objective in objectives:
+        maze.setStart(state[0])
+        maze.setObjectives([objective])
+        real_dist = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
+        #print(maze.getStart())
+        #print(real_dist)
+        real_distances.append(real_dist)
+
+    maze.setStart(actual_start)
+    maze.setObjectives(objectives)
+    return min(real_distances) + state[1].count('0') - 1
     
 
 
@@ -261,7 +321,7 @@ def astar_search(maze):
     g_score = {}
     f_score = {}
 
-    f_score[start_state] = heuristic(start_state, objectives)
+    f_score[start_state] = bfs_heuristic(start_state, maze, objectives)
     g_score[start_state] = 0
 
     while(len(open_set) > 0):
@@ -295,7 +355,7 @@ def astar_search(maze):
 
             came_from[neighbor_state] = current
             g_score[neighbor_state] = tentative_gscore
-            f_score[neighbor_state] = g_score[neighbor_state] + heuristic(neighbor_state, objectives)
+            f_score[neighbor_state] = g_score[neighbor_state] + bfs_heuristic(neighbor_state, maze, objectives)
                 
     raise Exception("No path found")
 
@@ -304,28 +364,28 @@ def astar_search(maze):
 def bfs(maze):
     
     # return path, num_states_explored
-    return general_pacman_search(bfs_strategy, maze)
+    return general_pacman_search(bfs_strategy, no_heuristic, maze)
 
 
 def dfs(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(dfs_strategy, maze)
+    return general_pacman_search(dfs_strategy, no_heuristic, maze)
 
 
 def greedy(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(greedy_strategy, maze)
+    return general_pacman_search(greedy_strategy, no_heuristic, maze)
 
 
 def astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(astar_strategy, maze)
+    return general_pacman_search(astar_strategy, near_far_heuristic, maze)
 
 
-def only_astar(maze):
+def pure_astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
     return astar_search(maze)
