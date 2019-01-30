@@ -151,7 +151,7 @@ def general_pacman_search(strategy, heuristic, maze, quiet=False):
 
 def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, frontier_evaluations, maze, objectives, heuristic):
     for state in reversed(neighbor_states):
-        if state not in frontier and state not in explored_states:
+        if state not in frontier_evaluations and state not in explored_states:
             frontier.append(state)
             frontier_evaluations[state] = 0
             best_paths[state] = best_paths[exploring_state] + [state[0]]
@@ -160,7 +160,7 @@ def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, 
 
 def dfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, frontier_evaluations, maze, objectives, heuristic):
     for state in reversed(neighbor_states):
-        if state not in frontier_evaluations and state not in explored_states:
+        if state not in frontier and state not in explored_states:
             frontier.insert(0, state)
             frontier_evaluations[state] = 0
             best_paths[state] = best_paths[exploring_state] + [state[0]]
@@ -280,21 +280,93 @@ def ts_heuristic(state, maze):
 
 
 def ts_astar(maze):
+
+    ###create a dict of shortest routes
+    nodes_explored = 0
     objectives = maze.getObjectives()
     start = maze.getStart()
-    
-    cities = maze.getObjectives() + [maze.getStart()]
+    cities = [maze.getStart()] + maze.getObjectives()
     trips = {}
     for city1 in cities:
         for city2 in cities:
             maze.setStart(city1)
             maze.setObjectives([city2])
-            this_distance = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
-            trips[city1, city2] = this_distance
-            print (city1, city2, this_distance)
+            this_path, new_nodes_explored = general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)
+            nodes_explored += new_nodes_explored
+            trips[city1, city2] = this_path
 
     maze.setStart(start)
     maze.setObjectives(objectives)
+
+    ###do astar on the weighted graph
+    #nodes_explored = 0
+    start_state = (start, "0" + "0"*len(objectives))
+    
+    closed_set = []
+    open_set = [start_state]
+    came_from = {start_state: [start_state]}
+    g_score = {}
+    f_score = {}
+
+    f_score[start_state] = mst_heuristic(cities, trips)
+    g_score[start_state] = 0
+
+    while(len(open_set) > 0):
+        current = min(open_set, key = lambda state: f_score[state])
+        nodes_explored += 1
+        
+        if current[1].count('1') == len(objectives):
+            path = [came_from[current][0][0]]
+            previous = came_from[current][0]
+            for state in came_from[current][1:]:
+                path = path + trips[(previous[0], state[0])][1:]
+                previous = state
+            return path, nodes_explored
+
+        open_set.remove(current)
+        closed_set.append(current)
+        remaining_cities = [cities[i] for i in range(len(cities)) if current[1][i] == "0" and cities[i] != current[0]]
+
+        for neighbor in remaining_cities:
+            neighbor_state = (neighbor, ''.join([current[1][i] if cities[i] != current[0] else "1" for i in range(len(cities))]))
+
+            #if neighbor_state in closed_set:
+                #continue
+
+            tentative_gscore = g_score.get(current, float('inf')) + len(trips[(current[0], neighbor_state[0])]) - 1
+            if neighbor_state not in open_set:
+                open_set.append(neighbor_state)
+            elif tentative_gscore >= g_score[neighbor_state]:
+                continue
+
+            came_from[neighbor_state] = came_from[current] + [neighbor_state]
+            g_score[neighbor_state] = tentative_gscore
+            f_score[neighbor_state] = g_score[neighbor_state] + mst_heuristic(remaining_cities, trips)
+                
+    raise Exception("No path found")
+
+
+#based on Kruskal's algorithm
+def mst_heuristic(cities, trips):
+    edges = sorted(trips.keys(), key = lambda key: len(trips[key]))
+    subset = set()
+    forest = {}
+    for city in cities:
+        forest[city] = set([city])
+    
+    for edge in edges:
+        if edge[0] in forest and edge[1] in forest and forest[edge[0]] != forest[edge[1]]:
+            subset.add(edge)
+            for city in forest[edge[0]]:
+                forest[city] = forest[city].union(forest[edge[1]])
+            for city in forest[edge[1]]:
+                forest[city] = forest[city].union(forest[edge[0]])
+            if len(forest[edge[0]]) == len(cities):
+                break
+
+    return sum([len(trips[edge]) for edge in subset]) - len(cities) + 1
+
+    
 
 
 def objective_subset_string(objectives, subset):
@@ -523,6 +595,8 @@ def p_astar(maze):
     # return path, num_states_explored
     return astar_search(maze, near_far_heuristic)
 
+def t_astar(maze):
+    return third_astar(PriorityFrontier(), near_far_heuristic, maze)
 
 def astar(maze):
-    return third_astar(PriorityFrontier(), near_far_heuristic, maze)
+    return ts_astar(maze)
