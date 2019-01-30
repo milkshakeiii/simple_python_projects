@@ -22,7 +22,7 @@ files and classes when code is run, so be careful to not modify anything else.
 # maze is a Maze object based on the maze from the file specified by input filename
 # searchMethod is the search method specified by --method flag (bfs,dfs,greedy,astar)
 
-import copy, itertools, collections
+import copy, itertools, collections, heapq
 
 
 def search(maze, searchMethod):
@@ -34,6 +34,84 @@ def search(maze, searchMethod):
     }.get(searchMethod)(maze)
 
 
+class PriorityFrontier:
+    def __init__(self):
+        self.heap = []
+        self.evaluations = {}
+        
+    def __len__(self):
+        return len(self.heap)
+    
+    def add(self, state, evaluation):
+        state_item = heapq.heappush(self.heap, (evaluation, state))
+        self.evaluations[state] = evaluation
+        
+    def pop(self):
+        popped = heapq.heappop(self.heap)[1]
+        del self.evaluations[popped]
+        return popped
+
+    def contains(self, state):
+        return state in self.evaluations
+
+    def value_of(self, state):
+        return self.evaluations[state]
+
+    def change_evaluation(self, state, new_evaluation):
+        for i in range(len(self.heap)):
+            item = self.heap[i]
+            if item[1] == state:
+                self.heap[i] = (new_evaluation, state)
+        heapq.heapify(self.heap)
+        
+
+
+
+def third_astar(frontier, heuristic, maze):
+    nodes_explored = 0
+    start_state = (maze.getStart(), ''.join("1" if maze.getStart()==objective else "0" for objective in maze.getObjectives()))
+    frontier.add(start_state, heuristic(start_state, maze))
+    
+    path_map = {start_state: [start_state[0]]}
+    explored_states = {}
+
+    while len(frontier) > 0:
+        exploring_state = frontier.pop()
+        nodes_explored += 1
+        explored_states[exploring_state] = True
+        print (nodes_explored, heuristic(exploring_state, maze))
+
+        if (exploring_state[1].count('1') == len(maze.getObjectives())):
+            return path_map[exploring_state], nodes_explored
+
+        neighbors = maze.getNeighbors(exploring_state[0][0], exploring_state[0][1])
+        for neighbor in neighbors:
+            objectives_string = exploring_state[1]
+            for i in range(len(maze.getObjectives())):
+                if neighbor == maze.getObjectives()[i]:
+                    objectives_string = objectives_string[:i] + "1" + objectives_string[i+1:]
+            neighbor_state = (neighbor, objectives_string)
+            evaluation = len(path_map[exploring_state]) + heuristic(neighbor_state, maze)
+
+            if neighbor_state in explored_states:
+                old_path = path_map[neighbor_state]
+                new_path = path_map[exploring_state] + [neighbor_state[0]]
+                if len(old_path) > len(new_path):
+                    path_map[neighbor_state] = new_path
+                else:
+                    continue
+                
+            if not frontier.contains(neighbor_state):
+                frontier.add(neighbor_state, evaluation)
+                path_map[neighbor_state] = path_map[exploring_state] + [neighbor_state[0]]
+            elif evaluation < frontier.value_of(neighbor_state):
+                frontier.change_evaluation(neighbor_state, evaluation)
+                path_map[neighbor_state] = path_map[exploring_state] + [neighbor_state[0]]
+                             
+
+    raise Exception("No path found.")
+
+
 def general_pacman_search(strategy, heuristic, maze, quiet=False):
     nodes_explored = 0
     start = maze.getStart()
@@ -41,7 +119,7 @@ def general_pacman_search(strategy, heuristic, maze, quiet=False):
 
     start_state = (start, ''.join("1" if maze.getStart()==objective else "0" for objective in objectives))
     frontier = [start_state]
-    frontier_evaluations = {start_state: heuristic(start_state, maze, objectives)}
+    frontier_evaluations = {start_state: heuristic(start_state, maze)}
     explored_states = {}
     best_paths = {start_state: [start]}
 
@@ -53,7 +131,6 @@ def general_pacman_search(strategy, heuristic, maze, quiet=False):
             #print(nodes_explored)
             #print(frontier_evaluations[exploring_state], exploring_state)
         explored_states[exploring_state] = True
-        del frontier_evaluations[exploring_state]
 
         if (exploring_state[1].count('1') == len(objectives)):
             return best_paths[exploring_state], nodes_explored
@@ -74,7 +151,7 @@ def general_pacman_search(strategy, heuristic, maze, quiet=False):
 
 def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, frontier_evaluations, maze, objectives, heuristic):
     for state in reversed(neighbor_states):
-        if state not in frontier_evaluations and state not in explored_states:
+        if state not in frontier and state not in explored_states:
             frontier.append(state)
             frontier_evaluations[state] = 0
             best_paths[state] = best_paths[exploring_state] + [state[0]]
@@ -82,7 +159,7 @@ def bfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, 
 
 
 def dfs_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, frontier_evaluations, maze, objectives, heuristic):
-    for state in neighbor_states:
+    for state in reversed(neighbor_states):
         if state not in frontier_evaluations and state not in explored_states:
             frontier.insert(0, state)
             frontier_evaluations[state] = 0
@@ -94,7 +171,7 @@ def frontier_insertion(insert_me, evaluation, frontier, frontier_evaluations):
     frontier_evaluations[insert_me] = evaluation
     for i in range(len(frontier)):
         state = frontier[i]
-        if frontier_evaluations[state] < evaluation:
+        if frontier_evaluations[state] <= evaluation:
             continue
         else:
             frontier.insert(i, insert_me)
@@ -106,33 +183,39 @@ def greedy_strategy(neighbor_states, exploring_state, best_paths, explored_state
     for state in reversed(neighbor_states):
         if state not in frontier_evaluations and state not in explored_states:
             best_paths[state] = best_paths[exploring_state] + [state[0]]
-            frontier_insertion(state, dot_heuristic(state, maze, objectives), frontier, frontier_evaluations)
+            frontier_insertion(state, heuristic(state, maze, objectives), frontier, frontier_evaluations)
     
     return frontier, best_paths
 
 
 def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states, frontier, frontier_evaluations, maze, objectives, heuristic):
     for state in reversed(neighbor_states):
-        if state not in explored_states:
-            if state not in frontier_evaluations:
+        if state not in explored_states and state not in frontier:
                 best_paths[state] = best_paths[exploring_state] + [state[0]]
-                evaluation = len(best_paths[exploring_state]) + heuristic(state, maze, objectives)
+                evaluation = len(best_paths[exploring_state]) + heuristic(state, maze)
                 frontier_insertion(state, evaluation, frontier, frontier_evaluations)
-            else:
-                old_best_path = best_paths[state]
-                current_path = best_paths[exploring_state] + [state[0]]
-                if len(current_path) < len(old_best_path):
-                    best_paths[state] = current_path
-                    frontier.remove(state)
-                    del frontier_evaluations[state]
-                    evaluation = len(best_paths[exploring_state]) + heuristic(state, maze, objectives)
-                    frontier_insertion(state, evaluation, frontier, frontier_evaluations)
-                else:
-                    continue
+        elif state in frontier:
+            old_best_path = best_paths[state]
+            current_path = best_paths[exploring_state] + [state[0]]
+            if len(current_path) < len(old_best_path):
+                best_paths[state] = current_path
+                frontier.remove(state)
+                del frontier_evaluations[state]
+                evaluation = len(best_paths[exploring_state]) + heuristic(state, maze)
+                frontier_insertion(state, evaluation, frontier, frontier_evaluations)
+        elif state in explored_states:
+            old_best_path = best_paths[state]
+            current_path = best_paths[exploring_state] + [state[0]]
+            if len(current_path) < len(old_best_path):
+                best_paths[state] = current_path
+                del explored_states[state]
+                del frontier_evaluations[state]
+                evaluation = len(best_paths[exploring_state]) + heuristic(state, maze)
+                frontier_insertion(state, evaluation, frontier, frontier_evaluations)
             
     return frontier, best_paths
 
-def dot_heuristic(state, maze, objectives):
+def dot_heuristic(state, maze):
     return state[1].count("0")
 
 
@@ -163,7 +246,8 @@ def naive_ts_heuristic(state, maze, objectives):
 
 
 #based on the held-karp algorithm
-def ts_heuristic(state, maze, objectives):
+def ts_heuristic(state, maze):
+    objectives = maze.getObjectives()
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -195,7 +279,25 @@ def ts_heuristic(state, maze, objectives):
     return min([subset_endpoints_to_pathlengths[objective_subset_string(remaining_objectives, remaining_objectives), endpoint] for endpoint in remaining_objectives])
 
 
-def objective_subset_string(objectives, maze, subset):
+def ts_astar(maze):
+    objectives = maze.getObjectives()
+    start = maze.getStart()
+    
+    cities = maze.getObjectives() + [maze.getStart()]
+    trips = {}
+    for city1 in cities:
+        for city2 in cities:
+            maze.setStart(city1)
+            maze.setObjectives([city2])
+            this_distance = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
+            trips[city1, city2] = this_distance
+            print (city1, city2, this_distance)
+
+    maze.setStart(start)
+    maze.setObjectives(objectives)
+
+
+def objective_subset_string(objectives, subset):
     return ''.join('1' if objective in subset else '0' for objective in objectives)
 
             
@@ -203,11 +305,13 @@ def manhattan(a, b):
     return abs(a[0]-b[0]) + abs(a[1]-b[1])
 
 
-def no_heuristic(state, maze, objectives):
+def no_heuristic(state, maze):
     return 0
 
 
-def near_far_heuristic(state, maze, objectives):
+def near_far_heuristic(state, maze):
+    objectives = maze.getObjectives()
+    
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -276,7 +380,8 @@ def bfs_near_far_heuristic(state, maze, objectives):
 
     return nearest_distance + farthest_distance
 
-def near_plus_one_heuristic(state, maze, objectives):
+def near_plus_one_heuristic(state, maze):
+    objectives = maze.getObjectives()
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -297,8 +402,20 @@ def near_plus_one_heuristic(state, maze, objectives):
     return nearest_manhattan + len(remaining_objectives)
 
 
-def bfs_heuristic(state, maze, objectives):
+def bfs_heuristic(state, maze):
+    true_start = maze.getStart()
+    true_objectives = maze.getObjectives()
+    maze.setStart(state[0])
+    maze.setObjectives([objective for objective in true_objectives if state[1][true_objectives.index(objective)] == '0'])
+    true_distance = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
+    maze.setStart(true_start)
+    maze.setObjectives(true_objectives)
+    return true_distance
+
+
+def subproblem_heuristic(state, maze):
     actual_start = maze.getStart()
+    objectives = maze.getObjectives()
 
     real_distances = []
     for objective in objectives:
@@ -311,8 +428,7 @@ def bfs_heuristic(state, maze, objectives):
 
     maze.setStart(actual_start)
     maze.setObjectives(objectives)
-    return min(real_distances) + state[1].count('0') - 1
-    
+    return min(real_distances) + state[1].count('0') - 1    
 
 
 #based on pseudocode from wikipedia A* page
@@ -326,7 +442,7 @@ def reconstruct_path(came_from, state):
 
 
 #also based on pseudocode from wikipedia A* page
-def astar_search(maze):
+def astar_search(maze, heuristic):
     nodes_explored = 0
     start = maze.getStart()
     objectives = maze.getObjectives()
@@ -338,12 +454,13 @@ def astar_search(maze):
     g_score = {}
     f_score = {}
 
-    f_score[start_state] = bfs_heuristic(start_state, maze, objectives)
+    f_score[start_state] = heuristic(start_state, maze, objectives)
     g_score[start_state] = 0
 
     while(len(open_set) > 0):
         current = min(open_set, key = lambda state: f_score[state])
         nodes_explored += 1
+        print (g_score[current])
         
         if current[1].count('1') == len(objectives):
             print (reconstruct_path(came_from, current), nodes_explored)
@@ -371,7 +488,7 @@ def astar_search(maze):
 
             came_from[neighbor_state] = current
             g_score[neighbor_state] = tentative_gscore
-            f_score[neighbor_state] = g_score[neighbor_state] + bfs_near_far_heuristic(neighbor_state, maze, objectives)
+            f_score[neighbor_state] = g_score[neighbor_state] + heuristic(neighbor_state, maze, objectives)
                 
     raise Exception("No path found")
 
@@ -395,7 +512,7 @@ def greedy(maze):
     return general_pacman_search(greedy_strategy, dot_heuristic, maze)
 
 
-def astar(maze):
+def o_astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
     return general_pacman_search(astar_strategy, near_far_heuristic, maze)
@@ -404,4 +521,8 @@ def astar(maze):
 def p_astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return astar_search(maze)
+    return astar_search(maze, near_far_heuristic)
+
+
+def astar(maze):
+    return third_astar(PriorityFrontier(), near_far_heuristic, maze)
