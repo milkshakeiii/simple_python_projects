@@ -79,7 +79,7 @@ def third_astar(frontier, heuristic, maze):
         exploring_state = frontier.pop()
         nodes_explored += 1
         explored_states[exploring_state] = True
-        print (nodes_explored, heuristic(exploring_state, maze))
+        #print (nodes_explored, heuristic(exploring_state, maze))
 
         if (exploring_state[1].count('1') == len(maze.getObjectives())):
             return path_map[exploring_state], nodes_explored
@@ -527,16 +527,16 @@ def astar_search(maze, heuristic):
     g_score = {}
     f_score = {}
 
-    f_score[start_state] = heuristic(start_state, maze, objectives)
+    f_score[start_state] = heuristic(start_state, maze)
     g_score[start_state] = 0
 
     while(len(open_set) > 0):
         current = min(open_set, key = lambda state: f_score[state])
         nodes_explored += 1
-        print (g_score[current])
+        #print (g_score[current])
         
         if current[1].count('1') == len(objectives):
-            print (reconstruct_path(came_from, current), nodes_explored)
+            #print (reconstruct_path(came_from, current), nodes_explored)
             return reconstruct_path(came_from, current), nodes_explored
 
         open_set.remove(current)
@@ -561,7 +561,7 @@ def astar_search(maze, heuristic):
 
             came_from[neighbor_state] = current
             g_score[neighbor_state] = tentative_gscore
-            f_score[neighbor_state] = g_score[neighbor_state] + heuristic(neighbor_state, maze, objectives)
+            f_score[neighbor_state] = g_score[neighbor_state] + heuristic(neighbor_state, maze)
                 
     raise Exception("No path found")
 
