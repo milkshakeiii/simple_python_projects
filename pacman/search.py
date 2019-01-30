@@ -183,7 +183,7 @@ def greedy_strategy(neighbor_states, exploring_state, best_paths, explored_state
     for state in reversed(neighbor_states):
         if state not in frontier_evaluations and state not in explored_states:
             best_paths[state] = best_paths[exploring_state] + [state[0]]
-            frontier_insertion(state, heuristic(state, maze, objectives), frontier, frontier_evaluations)
+            frontier_insertion(state, heuristic(state, maze), frontier, frontier_evaluations)
     
     return frontier, best_paths
 
@@ -219,7 +219,9 @@ def dot_heuristic(state, maze):
     return state[1].count("0")
 
 
-def naive_ts_heuristic(state, maze, objectives):
+def naive_ts_heuristic(state, maze):
+    objectives = maze.getObjectives()
+    
     remaining_objectives = []
     for i in range(len(objectives)):
         if state[1][i] == "0":
@@ -292,13 +294,13 @@ def ts_astar(maze):
             maze.setStart(city1)
             maze.setObjectives([city2])
             this_path, new_nodes_explored = general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)
-            nodes_explored += new_nodes_explored
+            #nodes_explored += new_nodes_explored
             trips[city1, city2] = this_path
 
     maze.setStart(start)
     maze.setObjectives(objectives)
 
-    ###do astar on the weighted graph
+    ###do astar on the weighted graph, for part of this I referenced the wikipedia page on A* search
     #nodes_explored = 0
     start_state = (start, "0" + "0"*len(objectives))
     
@@ -366,8 +368,6 @@ def mst_heuristic(cities, trips):
 
     return sum([len(trips[edge]) for edge in subset]) - len(cities) + 1
 
-    
-
 
 def objective_subset_string(objectives, subset):
     return ''.join('1' if objective in subset else '0' for objective in objectives)
@@ -412,8 +412,9 @@ def near_far_heuristic(state, maze):
     return nearest_manhattan + farthest_manhattan + 1
 
 
-def bfs_near_far_heuristic(state, maze, objectives):
+def bfs_near_far_heuristic(state, maze):
     true_start = maze.getStart()
+    objectives = maze.getObjectives()
     
     remaining_objectives = []
     for i in range(len(objectives)):
@@ -565,9 +566,7 @@ def astar_search(maze, heuristic):
     raise Exception("No path found")
 
 
-
 def bfs(maze):
-    
     # return path, num_states_explored
     return general_pacman_search(bfs_strategy, no_heuristic, maze)
 
@@ -581,7 +580,7 @@ def dfs(maze):
 def greedy(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(greedy_strategy, dot_heuristic, maze)
+    return general_pacman_search(greedy_strategy, near_far_heuristic, maze)
 
 
 def o_astar(maze):
@@ -595,8 +594,10 @@ def p_astar(maze):
     # return path, num_states_explored
     return astar_search(maze, near_far_heuristic)
 
+
 def t_astar(maze):
     return third_astar(PriorityFrontier(), near_far_heuristic, maze)
+
 
 def astar(maze):
     return ts_astar(maze)
