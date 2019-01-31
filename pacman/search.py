@@ -127,9 +127,8 @@ def general_pacman_search(strategy, heuristic, maze, quiet=False):
         exploring_state = frontier.pop(0)
         nodes_explored += 1
         if not quiet:
-            pass
-            #print(nodes_explored)
-            #print(frontier_evaluations[exploring_state], exploring_state)
+            print(nodes_explored)
+            print(frontier_evaluations[exploring_state], exploring_state)
         explored_states[exploring_state] = True
 
         if (exploring_state[1].count('1') == len(objectives)):
@@ -283,7 +282,9 @@ def ts_heuristic(state, maze):
 
 def ts_astar(maze):
 
-    ###create a dict of shortest routes
+    ###all optimal paths will be sequences of optimal paths between two dots.
+    ###the optimal path from one dot to another is much easier to find than the whole many-dot problem.
+    ###so we begin by creating a dictionary of dot pairs to optimal paths
     nodes_explored = 0
     objectives = maze.getObjectives()
     start = maze.getStart()
@@ -294,14 +295,17 @@ def ts_astar(maze):
             maze.setStart(city1)
             maze.setObjectives([city2])
             this_path, new_nodes_explored = general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)
-            #nodes_explored += new_nodes_explored
+            #nodes_explored += new_nodes_explored #since this is not really part of the astar search, I don't count it towards nodes_explored
+            #as a result, if there are a small number of dots, nodes_explored will be quite low.  that is because the bulk of the work was done here
             trips[city1, city2] = this_path
 
     maze.setStart(start)
     maze.setObjectives(objectives)
+    print("Done with parsing into TSP")
 
-    ###do astar on the weighted graph, for part of this I referenced the wikipedia page on A* search
-    #nodes_explored = 0
+    ###after we obtain the dictionary of optimal paths, the problem simply becomes the traveling salesperson
+    ###so we simply do astar on the weighted graph, for part of this I referenced the wikipedia page on A* search
+    
     start_state = (start, "0" + "0"*len(objectives))
     
     closed_set = []
@@ -332,11 +336,9 @@ def ts_astar(maze):
         for neighbor in remaining_cities:
             neighbor_state = (neighbor, ''.join([current[1][i] if cities[i] != current[0] else "1" for i in range(len(cities))]))
 
-            #if neighbor_state in closed_set:
-                #continue
-
+            #mst_heuristic is not consistent so if the state is in the closed set we might need to update its best path and explore it agin
             tentative_gscore = g_score.get(current, float('inf')) + len(trips[(current[0], neighbor_state[0])]) - 1
-            if neighbor_state not in open_set:
+            if neighbor_state not in open_set and (neighbor_state not in closed_set or tentative_gscore < g_score[neighbor_state]):
                 open_set.append(neighbor_state)
             elif tentative_gscore >= g_score[neighbor_state]:
                 continue
@@ -349,6 +351,8 @@ def ts_astar(maze):
 
 
 #based on Kruskal's algorithm
+#this heuristic is admissable because the true best path is a spanning tree,
+#so the minimum spanning tree must be less than or equal to it in weight
 def mst_heuristic(cities, trips):
     edges = sorted(trips.keys(), key = lambda key: len(trips[key]))
     subset = set()
@@ -568,31 +572,31 @@ def astar_search(maze, heuristic):
 
 def bfs(maze):
     # return path, num_states_explored
-    return general_pacman_search(bfs_strategy, no_heuristic, maze)
+    return general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)
 
 
 def dfs(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(dfs_strategy, no_heuristic, maze)
+    return general_pacman_search(dfs_strategy, no_heuristic, maze, quiet=True)
 
 
 def greedy(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(greedy_strategy, near_far_heuristic, maze)
+    return general_pacman_search(greedy_strategy, near_far_heuristic, maze, quiet=True)
 
 
 def o_astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(astar_strategy, near_far_heuristic, maze)
+    return general_pacman_search(astar_strategy, near_far_heuristic, maze, quiet=True)
 
 
 def p_astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return astar_search(maze, near_far_heuristic)
+    return astar_search(maze, near_far_heuristic, quiet=True)
 
 
 def t_astar(maze):
