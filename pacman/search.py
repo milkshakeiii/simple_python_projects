@@ -330,19 +330,16 @@ def bfs(maze):
 
 
 def dfs(maze):
-    # TODO: Write your code here
     # return path, num_states_explored
     return general_pacman_search(dfs_strategy, no_heuristic, maze, quiet=True)
 
 
 def greedy(maze):
-    # TODO: Write your code here
     # return path, num_states_explored
     return general_pacman_search(greedy_strategy, near_far_heuristic, maze, quiet=True)
 
 
 def o_astar(maze):
-    # TODO: Write your code here
     # return path, num_states_explored
     return general_pacman_search(astar_strategy, near_plus_mst_heuristic, maze, quiet=True)
 
