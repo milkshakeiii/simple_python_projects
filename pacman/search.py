@@ -221,7 +221,7 @@ def ts_astar(maze):
     g_score = {}
     f_score = {}
 
-    f_score[start_state] = mst_heuristic(cities, trips, edges)
+    f_score[start_state] = mst_heuristic(cities, trips, edges=edges)
     g_score[start_state] = 0
 
     while(len(open_set) > 0):
@@ -254,7 +254,7 @@ def ts_astar(maze):
 
             came_from[neighbor_state] = came_from[current] + [neighbor_state]
             g_score[neighbor_state] = tentative_gscore
-            f_score[neighbor_state] = g_score[neighbor_state] + mst_heuristic(remaining_cities, trips, edges)
+            f_score[neighbor_state] = g_score[neighbor_state] + mst_heuristic(remaining_cities, trips, edges=edges)
                 
     raise Exception("No path found")
 
@@ -262,7 +262,10 @@ def ts_astar(maze):
 #based on Kruskal's algorithm
 #this heuristic is admissable because the true best path is a spanning tree,
 #so the minimum spanning tree must be less than or equal to it in weight
-def mst_heuristic(cities, trips, edges):
+def mst_heuristic(cities, trips, edges=None):
+    if edges==None:
+        edges = sorted(trips.keys(), key = lambda key: len(trips[key]))
+    
     subset = set()
     forest = {}
     for city in cities:
