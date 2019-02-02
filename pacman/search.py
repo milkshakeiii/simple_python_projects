@@ -34,84 +34,6 @@ def search(maze, searchMethod):
     }.get(searchMethod)(maze)
 
 
-class PriorityFrontier:
-    def __init__(self):
-        self.heap = []
-        self.evaluations = {}
-        
-    def __len__(self):
-        return len(self.heap)
-    
-    def add(self, state, evaluation):
-        state_item = heapq.heappush(self.heap, (evaluation, state))
-        self.evaluations[state] = evaluation
-        
-    def pop(self):
-        popped = heapq.heappop(self.heap)[1]
-        del self.evaluations[popped]
-        return popped
-
-    def contains(self, state):
-        return state in self.evaluations
-
-    def value_of(self, state):
-        return self.evaluations[state]
-
-    def change_evaluation(self, state, new_evaluation):
-        for i in range(len(self.heap)):
-            item = self.heap[i]
-            if item[1] == state:
-                self.heap[i] = (new_evaluation, state)
-        heapq.heapify(self.heap)
-        
-
-
-
-def third_astar(frontier, heuristic, maze):
-    nodes_explored = 0
-    start_state = (maze.getStart(), ''.join("1" if maze.getStart()==objective else "0" for objective in maze.getObjectives()))
-    frontier.add(start_state, heuristic(start_state, maze))
-    
-    path_map = {start_state: [start_state[0]]}
-    explored_states = {}
-
-    while len(frontier) > 0:
-        exploring_state = frontier.pop()
-        nodes_explored += 1
-        explored_states[exploring_state] = True
-        #print (nodes_explored, heuristic(exploring_state, maze))
-
-        if (exploring_state[1].count('1') == len(maze.getObjectives())):
-            return path_map[exploring_state], nodes_explored
-
-        neighbors = maze.getNeighbors(exploring_state[0][0], exploring_state[0][1])
-        for neighbor in neighbors:
-            objectives_string = exploring_state[1]
-            for i in range(len(maze.getObjectives())):
-                if neighbor == maze.getObjectives()[i]:
-                    objectives_string = objectives_string[:i] + "1" + objectives_string[i+1:]
-            neighbor_state = (neighbor, objectives_string)
-            evaluation = len(path_map[exploring_state]) + heuristic(neighbor_state, maze)
-
-            if neighbor_state in explored_states:
-                old_path = path_map[neighbor_state]
-                new_path = path_map[exploring_state] + [neighbor_state[0]]
-                if len(old_path) > len(new_path):
-                    path_map[neighbor_state] = new_path
-                else:
-                    continue
-                
-            if not frontier.contains(neighbor_state):
-                frontier.add(neighbor_state, evaluation)
-                path_map[neighbor_state] = path_map[exploring_state] + [neighbor_state[0]]
-            elif evaluation < frontier.value_of(neighbor_state):
-                frontier.change_evaluation(neighbor_state, evaluation)
-                path_map[neighbor_state] = path_map[exploring_state] + [neighbor_state[0]]
-                             
-
-    raise Exception("No path found.")
-
-
 def general_pacman_search(strategy, heuristic, maze, quiet=False):
     nodes_explored = 0
     start = maze.getStart()
@@ -216,68 +138,6 @@ def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states
 
 def dot_heuristic(state, maze):
     return state[1].count("0")
-
-
-def naive_ts_heuristic(state, maze):
-    objectives = maze.getObjectives()
-    
-    remaining_objectives = []
-    for i in range(len(objectives)):
-        if state[1][i] == "0":
-            remaining_objectives.append(objectives[i])
-
-    if len(remaining_objectives) == 0:
-        return 0
-
-    start = state[0]
-    total_steps = 0
-    while len(remaining_objectives) > 0:
-        nearest_objective = (-1, -1)
-        nearest_manhattan = float('inf')
-        for objective in remaining_objectives:
-            this_manhattan = manhattan(start, objective)
-            if this_manhattan < nearest_manhattan:
-                nearest_manhattan = this_manhattan
-                nearest_objective = objective
-        remaining_objectives.remove(nearest_objective)
-        total_steps += nearest_manhattan
-        start = nearest_objective
-
-    return total_steps
-
-
-#based on the held-karp algorithm
-def ts_heuristic(state, maze):
-    objectives = maze.getObjectives()
-    remaining_objectives = []
-    for i in range(len(objectives)):
-        if state[1][i] == "0":
-            remaining_objectives.append(objectives[i])
-
-    if len(remaining_objectives) == 0:
-        return 0
-
-    subset_endpoints_to_pathlengths = {}
-
-    for objective in remaining_objectives:
-        subset_endpoints_to_pathlengths[objective_subset_string(remaining_objectives, [objective]), objective] = manhattan(state[0], objective)
-    
-    for num_to_eat in range(2, len(remaining_objectives)+1):
-        for subset in itertools.combinations(remaining_objectives, num_to_eat):
-            subset_string = objective_subset_string(objectives, subset)
-            for endpoint in subset:
-                subsubset = [square for square in subset if square != endpoint]
-                subsubset_string = objective_subset_string(remaining_objectives, subsubset)
-                best_option_cost = float('inf')
-                for preendpoint in subset:
-                    if preendpoint == endpoint:
-                        continue
-                    this_option_cost = subset_endpoints_to_pathlengths[subsubset_string, preendpoint] + manhattan(preendpoint, endpoint)
-                    if this_option_cost < best_option_cost:
-                        best_option_cost = this_option_cost
-                subset_endpoints_to_pathlengths[objective_subset_string(remaining_objectives, subset), endpoint] = best_option_cost
-
-    return min([subset_endpoints_to_pathlengths[objective_subset_string(remaining_objectives, remaining_objectives), endpoint] for endpoint in remaining_objectives])
 
 
 def ts_astar(maze):
@@ -394,7 +254,7 @@ def near_far_heuristic(state, maze):
             remaining_objectives.append(objectives[i])
 
     if len(remaining_objectives) == 0:
-        return 1
+        return 0 #since even if pacman starts at the goal, paths are defined to include both starting point and goal
     
     nearest_objective = (-1, -1)
     nearest_manhattan = float('inf')
@@ -416,158 +276,6 @@ def near_far_heuristic(state, maze):
     return nearest_manhattan + farthest_manhattan + 1
 
 
-def bfs_near_far_heuristic(state, maze):
-    true_start = maze.getStart()
-    objectives = maze.getObjectives()
-    
-    remaining_objectives = []
-    for i in range(len(objectives)):
-        if state[1][i] == "0":
-            remaining_objectives.append(objectives[i])
-
-    if len(remaining_objectives) == 0:
-        return 1
-    
-    nearest_objective = (-1, -1)
-    nearest_distance = float('inf')
-    for objective in remaining_objectives:
-        maze.setStart(state[0])
-        maze.setObjectives([objective])
-        this_distance = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
-        if this_distance < nearest_distance:
-            nearest_distance = this_distance
-            nearest_objective = objective
-        maze.setStart(true_start)
-        maze.setObjectives(objectives)
-
-    remaining_objectives.remove(nearest_objective)
-    if len(remaining_objectives) == 0:
-        return nearest_distance
-    
-    farthest_distance = float('-inf')
-    for objective in remaining_objectives:
-        maze.setStart(nearest_objective)
-        maze.setObjectives([objective])
-        this_distance = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
-        if this_distance > farthest_distance:
-            farthest_distance = this_distance
-            farthest_objective = objective
-        maze.setStart(true_start)
-        maze.setObjectives(objectives)
-
-    return nearest_distance + farthest_distance
-
-def near_plus_one_heuristic(state, maze):
-    objectives = maze.getObjectives()
-    remaining_objectives = []
-    for i in range(len(objectives)):
-        if state[1][i] == "0":
-            remaining_objectives.append(objectives[i])
-
-    if len(remaining_objectives) == 0:
-        return 0
-    
-    nearest_objective = (-1, -1)
-    nearest_manhattan = float('inf')
-    for objective in remaining_objectives:
-        this_manhattan = abs(state[0][0] - objective[0]) + abs(state[0][1] - objective[1])
-        if this_manhattan < nearest_manhattan:
-            nearest_manhattan = this_manhattan
-            nearest_objective = objective
-
-    remaining_objectives.remove(nearest_objective)
-    return nearest_manhattan + len(remaining_objectives)
-
-
-def bfs_heuristic(state, maze):
-    true_start = maze.getStart()
-    true_objectives = maze.getObjectives()
-    maze.setStart(state[0])
-    maze.setObjectives([objective for objective in true_objectives if state[1][true_objectives.index(objective)] == '0'])
-    true_distance = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
-    maze.setStart(true_start)
-    maze.setObjectives(true_objectives)
-    return true_distance
-
-
-def subproblem_heuristic(state, maze):
-    actual_start = maze.getStart()
-    objectives = maze.getObjectives()
-
-    real_distances = []
-    for objective in objectives:
-        maze.setStart(state[0])
-        maze.setObjectives([objective])
-        real_dist = len(general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)[0])
-        #print(maze.getStart())
-        #print(real_dist)
-        real_distances.append(real_dist)
-
-    maze.setStart(actual_start)
-    maze.setObjectives(objectives)
-    return min(real_distances) + state[1].count('0') - 1    
-
-
-#based on pseudocode from wikipedia A* page
-def reconstruct_path(came_from, state):
-    total_path = [state]
-    while state in came_from:
-        state = came_from[state]
-        total_path.append(state)
-
-    return [state[0] for state in total_path]
-
-
-#also based on pseudocode from wikipedia A* page
-def astar_search(maze, heuristic):
-    nodes_explored = 0
-    start = maze.getStart()
-    objectives = maze.getObjectives()
-    start_state = (start, "0"*len(objectives))
-    
-    closed_set = []
-    open_set = [start_state]
-    came_from = {}
-    g_score = {}
-    f_score = {}
-
-    f_score[start_state] = heuristic(start_state, maze)
-    g_score[start_state] = 0
-
-    while(len(open_set) > 0):
-        current = min(open_set, key = lambda state: f_score[state])
-        nodes_explored += 1
-        #print (g_score[current])
-        
-        if current[1].count('1') == len(objectives):
-            #print (reconstruct_path(came_from, current), nodes_explored)
-            return reconstruct_path(came_from, current), nodes_explored
-
-        open_set.remove(current)
-        closed_set.append(current)
-
-        for neighbor in maze.getNeighbors(current[0][0], current[0][1]):
-            objective_string = current[1]
-            neighbor_state = (neighbor, objective_string)
-            if neighbor in objectives:
-                index = objectives.index(neighbor)
-                objective_string = objective_string[:index] + "1" + objective_string[index+1:]
-                neighbor_state = (neighbor, objective_string)
-
-            if neighbor_state in closed_set:
-                continue
-
-            tentative_gscore = g_score.get(current, float('inf')) + 1
-            if neighbor_state not in open_set:
-                open_set.append(neighbor_state)
-            elif tentative_gscore >= g_score[neighbor_state]:
-                continue
-
-            came_from[neighbor_state] = current
-            g_score[neighbor_state] = tentative_gscore
-            f_score[neighbor_state] = g_score[neighbor_state] + heuristic(neighbor_state, maze)
-                
-    raise Exception("No path found")
 
 
 def bfs(maze):
@@ -584,24 +292,14 @@ def dfs(maze):
 def greedy(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(greedy_strategy, near_far_heuristic, maze, quiet=True)
+    return general_pacman_search(greedy_strategy, dot_heuristic, maze, quiet=True)
 
 
-def o_astar(maze):
+def astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
     return general_pacman_search(astar_strategy, near_far_heuristic, maze, quiet=True)
 
 
-def p_astar(maze):
-    # TODO: Write your code here
-    # return path, num_states_explored
-    return astar_search(maze, near_far_heuristic, quiet=True)
-
-
 def t_astar(maze):
-    return third_astar(PriorityFrontier(), near_far_heuristic, maze)
-
-
-def astar(maze):
     return ts_astar(maze)
