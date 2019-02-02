@@ -136,6 +136,49 @@ def astar_strategy(neighbor_states, exploring_state, best_paths, explored_states
             
     return frontier, best_paths
 
+trips = {}
+def near_plus_mst_heuristic(state, maze):
+    objectives = maze.getObjectives()
+    start = maze.getStart()
+    
+    remaining_objectives = []
+    for i in range(len(objectives)):
+        if state[1][i] == "0":
+            remaining_objectives.append(objectives[i])
+
+    if len(remaining_objectives) == 0:
+        return 1 #since even if pacman starts at the goal, paths are defined to include both starting point and goal
+
+    nearest_objective = (-1, -1)
+    nearest_manhattan = float('inf')
+    for objective in remaining_objectives:
+        this_manhattan = abs(state[0][0] - objective[0]) + abs(state[0][1] - objective[1])
+        if this_manhattan < nearest_manhattan:
+            nearest_manhattan = this_manhattan
+            nearest_objective = objective
+
+    cities = remaining_objectives
+
+    if len(trips) == 0:
+        for i in range(len(cities)):
+            city1 = cities[i]
+            for city2 in cities[i+1:]:
+                maze.setStart(city1)
+                maze.setObjectives([city2])
+                this_path, new_nodes_explored = general_pacman_search(astar_strategy, near_far_heuristic, maze, quiet=True)
+                #nodes_explored += new_nodes_explored #since this is not really part of the astar search, I don't count it towards nodes_explored
+                #as a result, if there are a small number of dots, nodes_explored will be quite low.  that is because the bulk of the work was done here
+                trips[city1, city2] = this_path
+                trips[collections, city1] = list(reversed(this_path))
+
+        maze.setStart(start)
+        maze.setObjectives(objectives)
+
+    #print(mst_heuristic(cities, trips))
+    return mst_heuristic(cities, trips) + nearest_manhattan
+    
+
+
 def dot_heuristic(state, maze):
     return state[1].count("0")
 
@@ -232,7 +275,8 @@ def mst_heuristic(cities, trips):
             if len(forest[edge[0]]) == len(cities):
                 break
 
-    return sum([len(trips[edge]) for edge in subset]) - len(cities) + 1
+    result = sum([len(trips[edge]) for edge in subset]) - len(cities) + 1
+    return result
 
 
 def objective_subset_string(objectives, subset):
@@ -256,7 +300,7 @@ def near_far_heuristic(state, maze):
             remaining_objectives.append(objectives[i])
 
     if len(remaining_objectives) == 0:
-        return 0 #since even if pacman starts at the goal, paths are defined to include both starting point and goal
+        return 1 #since even if pacman starts at the goal, paths are defined to include both starting point and goal
     
     nearest_objective = (-1, -1)
     nearest_manhattan = float('inf')
@@ -300,7 +344,7 @@ def greedy(maze):
 def o_astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(astar_strategy, near_far_heuristic, maze, quiet=True)
+    return general_pacman_search(astar_strategy, near_plus_mst_heuristic, maze, quiet=True)
 
 
 def astar(maze):
