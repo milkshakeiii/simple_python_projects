@@ -150,14 +150,16 @@ def ts_astar(maze):
     start = maze.getStart()
     cities = [maze.getStart()] + maze.getObjectives()
     trips = {}
-    for city1 in cities:
-        for city2 in cities:
+    for i in range(len(cities)):
+        city1 = cities[i]
+        for city2 in cities[i+1:]:
             maze.setStart(city1)
             maze.setObjectives([city2])
-            this_path, new_nodes_explored = general_pacman_search(bfs_strategy, no_heuristic, maze, quiet=True)
-            #nodes_explored += new_nodes_explored #since this is not really part of the astar search, I don't count it towards nodes_explored
+            this_path, new_nodes_explored = general_pacman_search(astar_strategy, near_far_heuristic, maze, quiet=True)
+            nodes_explored += new_nodes_explored #since this is not really part of the astar search, I don't count it towards nodes_explored
             #as a result, if there are a small number of dots, nodes_explored will be quite low.  that is because the bulk of the work was done here
             trips[city1, city2] = this_path
+            trips[city2, city1] = list(reversed(this_path))
 
     maze.setStart(start)
     maze.setObjectives(objectives)
@@ -292,14 +294,14 @@ def dfs(maze):
 def greedy(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    return general_pacman_search(greedy_strategy, dot_heuristic, maze, quiet=True)
+    return general_pacman_search(greedy_strategy, near_far_heuristic, maze, quiet=True)
 
 
-def astar(maze):
+def o_astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
     return general_pacman_search(astar_strategy, near_far_heuristic, maze, quiet=True)
 
 
-def t_astar(maze):
+def astar(maze):
     return ts_astar(maze)
