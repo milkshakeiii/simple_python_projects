@@ -147,7 +147,7 @@ def near_plus_mst_heuristic(state, maze):
             remaining_objectives.append(objectives[i])
 
     if len(remaining_objectives) == 0:
-        return 1 #since even if pacman starts at the goal, paths are defined to include both starting point and goal
+        return 0
 
     nearest_objective = (-1, -1)
     nearest_manhattan = float('inf')
@@ -199,13 +199,13 @@ def ts_astar(maze):
             maze.setStart(city1)
             maze.setObjectives([city2])
             this_path, new_nodes_explored = general_pacman_search(astar_strategy, near_far_heuristic, maze, quiet=True)
-            nodes_explored += new_nodes_explored #since this is not really part of the astar search, I don't count it towards nodes_explored
-            #as a result, if there are a small number of dots, nodes_explored will be quite low.  that is because the bulk of the work was done here
+            nodes_explored += new_nodes_explored
             trips[city1, city2] = this_path
             trips[city2, city1] = list(reversed(this_path))
 
     maze.setStart(start)
     maze.setObjectives(objectives)
+    edges = sorted(trips.keys(), key = lambda key: len(trips[key]))
     print("Done with parsing into TSP")
 
     ###after we obtain the dictionary of optimal paths, the problem simply becomes the traveling salesperson
@@ -214,12 +214,14 @@ def ts_astar(maze):
     start_state = (start, "0" + "0"*len(objectives))
     
     closed_set = []
+    closed_set_containment = {}
     open_set = [start_state]
+    open_set_containment = {start_state: True}
     came_from = {start_state: [start_state]}
     g_score = {}
     f_score = {}
 
-    f_score[start_state] = mst_heuristic(cities, trips)
+    f_score[start_state] = mst_heuristic(cities, trips, edges)
     g_score[start_state] = 0
 
     while(len(open_set) > 0):
@@ -235,22 +237,24 @@ def ts_astar(maze):
             return path, nodes_explored
 
         open_set.remove(current)
+        del open_set_containment[current]
         closed_set.append(current)
+        closed_set_containment[current] = True
         remaining_cities = [cities[i] for i in range(len(cities)) if current[1][i] == "0" and cities[i] != current[0]]
 
         for neighbor in remaining_cities:
             neighbor_state = (neighbor, ''.join([current[1][i] if cities[i] != current[0] else "1" for i in range(len(cities))]))
 
-            #mst_heuristic is not consistent so if the state is in the closed set we might need to update its best path and explore it agin
             tentative_gscore = g_score.get(current, float('inf')) + len(trips[(current[0], neighbor_state[0])]) - 1
-            if neighbor_state not in open_set and (neighbor_state not in closed_set or tentative_gscore < g_score[neighbor_state]):
+            if neighbor_state not in open_set_containment and (neighbor_state not in closed_set_containment or tentative_gscore < g_score[neighbor_state]):
                 open_set.append(neighbor_state)
+                open_set_containment[neighbor_state] = True
             elif tentative_gscore >= g_score[neighbor_state]:
                 continue
 
             came_from[neighbor_state] = came_from[current] + [neighbor_state]
             g_score[neighbor_state] = tentative_gscore
-            f_score[neighbor_state] = g_score[neighbor_state] + mst_heuristic(remaining_cities, trips)
+            f_score[neighbor_state] = g_score[neighbor_state] + mst_heuristic(remaining_cities, trips, edges)
                 
     raise Exception("No path found")
 
@@ -258,8 +262,7 @@ def ts_astar(maze):
 #based on Kruskal's algorithm
 #this heuristic is admissable because the true best path is a spanning tree,
 #so the minimum spanning tree must be less than or equal to it in weight
-def mst_heuristic(cities, trips):
-    edges = sorted(trips.keys(), key = lambda key: len(trips[key]))
+def mst_heuristic(cities, trips, edges):
     subset = set()
     forest = {}
     for city in cities:
@@ -300,7 +303,7 @@ def near_far_heuristic(state, maze):
             remaining_objectives.append(objectives[i])
 
     if len(remaining_objectives) == 0:
-        return 1 #since even if pacman starts at the goal, paths are defined to include both starting point and goal
+        return 0
     
     nearest_objective = (-1, -1)
     nearest_manhattan = float('inf')
@@ -319,7 +322,7 @@ def near_far_heuristic(state, maze):
             farthest_manhattan = this_manhattan
             farthest_objective = objective
 
-    return nearest_manhattan + farthest_manhattan + 1
+    return nearest_manhattan + farthest_manhattan
 
 
 
