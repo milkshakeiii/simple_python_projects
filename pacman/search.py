@@ -345,7 +345,7 @@ def greedy(maze):
     return general_pacman_search(greedy_strategy, near_far_heuristic, maze, quiet=True)
 
 
-def o_astar(maze):
+def slower_astar(maze):
     # return path, num_states_explored
     return general_pacman_search(astar_strategy, near_plus_mst_heuristic, maze, quiet=True)
 
