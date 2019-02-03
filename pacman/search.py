@@ -166,8 +166,6 @@ def near_plus_mst_heuristic(state, maze):
                 maze.setStart(city1)
                 maze.setObjectives([city2])
                 this_path, new_nodes_explored = general_pacman_search(astar_strategy, near_far_heuristic, maze, quiet=True)
-                #nodes_explored += new_nodes_explored #since this is not really part of the astar search, I don't count it towards nodes_explored
-                #as a result, if there are a small number of dots, nodes_explored will be quite low.  that is because the bulk of the work was done here
                 trips[city1, city2] = this_path
                 trips[collections, city1] = list(reversed(this_path))
 
