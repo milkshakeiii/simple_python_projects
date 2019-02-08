@@ -32,7 +32,7 @@ def backtrack(board, unassigned_pents, all_pents, solution):
     width = len(board)
     height = len(board[0])
 
-    pent = unassigned_pents.pop(0) #place me
+    pent = unassigned_pents[0] #place me
     placement_options = []
     for x in range(width):
         for y in range(height):
@@ -42,8 +42,8 @@ def backtrack(board, unassigned_pents, all_pents, solution):
 
     for option in placement_options:
         if add_pentomino(board, option[0], option[1]):
-            solution.append(option)
-            result = backtrack(board, unassigned_pents, all_pents, solution)
+            result = backtrack(board, unassigned_pents[1:], all_pents, solution + [option])
+            remove_pentomino(board, option[0])
             if result:
                 return result
 
@@ -80,10 +80,33 @@ def add_pentomino(board, pent, coord):
         for col in range(pent.shape[1]):
             if pent[row][col] != 0:
                 if board[coord[0]+row][coord[1]+col] != -1: # Overlap or zero-covering
+                    remove_pentomino(board, pent)
                     return False
                 else:
                     board[coord[0]+row][coord[1]+col] = pent[row][col]
     return True
+
+
+def remove_pentomino(board, pent):
+    pent_idx = get_pent_idx(pent)
+    board[board==pent_idx+1] = -1
+
+
+def get_pent_idx(pent):
+    """
+    Returns the index of a pentomino.
+    """
+    pidx = 0
+    for i in range(pent.shape[0]):
+        for j in range(pent.shape[1]):
+            if pent[i][j] != 0:
+                pidx = pent[i][j]
+                break
+        if pidx != 0:
+            break
+    if pidx == 0:
+        return -1
+    return pidx - 1
 
         
 def check_correctness(sol_list, board, pents):
