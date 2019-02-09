@@ -49,10 +49,10 @@ def backtrack(board, unassigned_pent_idxs, all_pents, domains, solution):
 
     for option in placement_options:
         assigned_pent_idxs = set()
-        inference_success = inference(board, unassigned_pent_idxs, assigned_pent_idxs, domains, option[0], option[1])
-        if inference_success:
-            if add_pentomino(board, option[0], option[1]):
-                assigned_pent_idxs.add(get_pent_idx(option[0]))
+        if add_pentomino(board, option[0], option[1]):
+            assigned_pent_idxs.add(get_pent_idx(option[0]))
+            inference_success = AC-3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents)
+            if inference_success:
                 result = backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, all_pents, domains, solution + [option])
                 if result:
                     return result
@@ -63,10 +63,22 @@ def backtrack(board, unassigned_pent_idxs, all_pents, domains, solution):
     return False
 
 
-def inference(board, unassigned_pent_idxs, assigned_pent_idxs, domains, pent, coord):
+def AC-3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents):
+    queue = []
+    for pent1 in unassigned_pent_idxs:
+        for pent2 in unassigned_pent_idxs:
+            queue.add((pent1, pent2))
+
+    while len(queue) > 0:
+        pent1_idx, pent2_idx = queue.pop()
+        pent1, pent2 = all_pents[pent1_idx], all_pents[pent2_idx]
+        if revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1, pent2):
+            if len(domains[pent1_idx]) == 0:
+                return False
+            for pent3 in unassigned_pent_idxs - set([pent2]):
+                queue.add((pent3, pent1))
+            
     return True
-    #queue = []
-    #for 
 
 
 def in_bounds(placement, board):
