@@ -28,7 +28,10 @@ def solve(board, pents):
                 pent_rotations = rotated_versions(pent)
                 for rotation in pent_rotations:
                     if add_pentomino(board, rotation, (x, y)):
-                        domains[get_pent_idx(unassigned_pent)] = (rotation, (x, y))
+                        option = (rotation, (x, y))
+                        if get_pent_idx(pent) not in domains:
+                            domains[get_pent_idx(pent)] = [option]
+                        domains[get_pent_idx(pent)].append(option)
                         remove_pentomino(board, rotation)
     
     result = backtrack(board, set([get_pent_idx(pent) for pent in pents]), copy.deepcopy(pents), domains, [])
@@ -36,21 +39,21 @@ def solve(board, pents):
 
 
 def backtrack(board, unassigned_pent_idxs, all_pents, domains, solution):
-    if len(unassigned_pents) == 0:
+    if len(unassigned_pent_idxs) == 0:
         return solution if check_correctness(solution, board, all_pents) else False
     
     width = len(board)
     height = len(board[0])
 
-    pent = all_pents[unassigned_pents[0]] #place me
-    placement_options = domains[get_pent_idx(pent)]
+    placement_options = domains[list(unassigned_pent_idxs)[0]]
 
     for option in placement_options:
         assigned_pent_idxs = set()
-        inference_success = inference(board, unassigned_pents, assigned_pent_idxs, domains, option[0], option[0])
+        inference_success = inference(board, unassigned_pent_idxs, assigned_pent_idxs, domains, option[0], option[1])
         if inference_success:
             if add_pentomino(board, option[0], option[1]):
-                result = backtrack(board, unassigned_pents - assigned_pents, all_pents, solution + [option])
+                assigned_pent_idxs.add(get_pent_idx(option[0]))
+                result = backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, all_pents, domains, solution + [option])
                 if result:
                     return result
                 
@@ -60,7 +63,7 @@ def backtrack(board, unassigned_pent_idxs, all_pents, domains, solution):
     return False
 
 
-def inference(board, unassigned_pents, domains, pent, coord):
+def inference(board, unassigned_pent_idxs, assigned_pent_idxs, domains, pent, coord):
     return True
     #queue = []
     #for 
