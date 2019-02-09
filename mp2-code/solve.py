@@ -64,6 +64,7 @@ def backtrack(board, unassigned_pent_idxs, all_pents, domains, solution):
 
 
 def AC-3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents):
+    #returns true iff the board seems arc consistent
     queue = []
     for pent1 in unassigned_pent_idxs:
         for pent2 in unassigned_pent_idxs:
@@ -79,6 +80,11 @@ def AC-3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents):
                 queue.add((pent3, pent1))
             
     return True
+
+
+def revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1, pent2):
+    #revise the domain of pent1 to be consistent with pent2.  return True iff revisions are made.
+    pass
 
 
 def in_bounds(placement, board):
