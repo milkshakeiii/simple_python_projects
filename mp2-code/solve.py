@@ -19,35 +19,51 @@ def solve(board, pents):
 
     board = -board #avoid conflicts between place-marker 1s and 1st pentominos
 
-
+    width = len(board)
+    height = len(board[0])
+    domains = {}
+    for pent in pents:
+        for x in range(width):
+            for y in range(height):
+                pent_rotations = rotated_versions(pent)
+                for rotation in pent_rotations:
+                    if add_pentomino(board, rotation, (x, y)):
+                        domains[get_pent_idx(unassigned_pent)] = (rotation, (x, y))
+                        remove_pentomino(board, rotation)
     
-    result = backtrack(board, copy.deepcopy(pents), copy.deepcopy(pents), [])
+    result = backtrack(board, set([get_pent_idx(pent) for pent in pents]), copy.deepcopy(pents), domains, [])
     return result
 
 
-def backtrack(board, unassigned_pents, all_pents, solution):
+def backtrack(board, unassigned_pent_idxs, all_pents, domains, solution):
     if len(unassigned_pents) == 0:
         return solution if check_correctness(solution, board, all_pents) else False
     
     width = len(board)
     height = len(board[0])
 
-    pent = unassigned_pents[0] #place me
-    placement_options = []
-    for x in range(width):
-        for y in range(height):
-            pent_rotations = rotated_versions(pent)
-            for rotation in pent_rotations:
-                placement_options.append((rotation, (x, y)))
+    pent = all_pents[unassigned_pents[0]] #place me
+    placement_options = domains[get_pent_idx(pent)]
 
     for option in placement_options:
-        if add_pentomino(board, option[0], option[1]):
-            result = backtrack(board, unassigned_pents[1:], all_pents, solution + [option])
-            remove_pentomino(board, option[0])
-            if result:
-                return result
+        assigned_pent_idxs = set()
+        inference_success = inference(board, unassigned_pents, assigned_pent_idxs, domains, option[0], option[0])
+        if inference_success:
+            if add_pentomino(board, option[0], option[1]):
+                result = backtrack(board, unassigned_pents - assigned_pents, all_pents, solution + [option])
+                if result:
+                    return result
+                
+        for pent_idx in assigned_pent_idxs:
+            remove_pentomino(board, all_pents[pent_idx])
 
     return False
+
+
+def inference(board, unassigned_pents, domains, pent, coord):
+    return True
+    #queue = []
+    #for 
 
 
 def in_bounds(placement, board):
