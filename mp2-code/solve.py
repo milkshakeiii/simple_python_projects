@@ -33,6 +33,8 @@ def solve(board, pents):
                             domains[get_pent_idx(pent)] = [option]
                         domains[get_pent_idx(pent)].append(option)
                         remove_pentomino(board, rotation)
+
+    print(len(domains[1]))
     
     result = backtrack(board, set([get_pent_idx(pent) for pent in pents]), copy.deepcopy(pents), domains, [])
     return result
@@ -44,16 +46,17 @@ def backtrack(board, unassigned_pent_idxs, all_pents, domains, solution):
     
     width = len(board)
     height = len(board[0])
-
+            
     placement_options = domains[list(unassigned_pent_idxs)[0]]
 
     for option in placement_options:
         assigned_pent_idxs = set()
         if add_pentomino(board, option[0], option[1]):
             assigned_pent_idxs.add(get_pent_idx(option[0]))
-            inference_success = AC3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents)
+            new_domains = copy.deepcopy(domains)
+            inference_success = AC3(board, unassigned_pent_idxs, assigned_pent_idxs, new_domains, all_pents)
             if inference_success:
-                result = backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, all_pents, domains, solution + [option])
+                result = backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, all_pents, new_domains, solution + [option])
                 if result:
                     return result
                 
@@ -70,10 +73,21 @@ def AC3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents):
         for pent2 in unassigned_pent_idxs:
             queue.append((pent1, pent2))
 
+    #remove invalid values from domains
+    for domain in domains.values():
+        remove_us = []
+        for option in domain:
+            if add_pentomino(board, option[0], option[1]):
+                remove_pentomino(board, option[0])
+            else:
+                remove_us.append(option)
+        for remove_me in remove_us:
+            domain.remove(remove_me)
+
     while len(queue) > 0:
         pent1_idx, pent2_idx = queue.pop()
         pent1, pent2 = all_pents[pent1_idx], all_pents[pent2_idx]
-        if revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1, pent2):
+        if revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1_idx, pent2_idx):
             if len(domains[pent1_idx]) == 0:
                 return False
             for pent3 in unassigned_pent_idxs - set([pent2]):
@@ -82,9 +96,29 @@ def AC3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents):
     return True
 
 
-def revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1, pent2):
+def revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1_idx, pent2_idx):
     #revise the domain of pent1 to be consistent with pent2.  return True iff revisions are made.
-    return False
+    revised = False
+    remove_us = []
+    
+    for option_x in domains[pent1_idx]:
+        some_y_exists = False
+        
+        for option_y in domains[pent2_idx]:
+            if not add_pentomino(board, option_y[0], option_y[1]):
+                raise Exception("Invalid option in domain")
+            if add_pentomino(board, option_x[0], option_x[1]):
+                some_y_exists = True
+                remove_pentomino(board, option_x[0])
+            remove_pentomino(board, option_y[0])
+        if not some_y_exists:
+            remove_us.append(option_x)
+
+    for remove_me in remove_us:
+        domains[pent1_idx].remove(remove_me)
+        revised = True
+            
+    return revised
 
 
 def in_bounds(placement, board):
