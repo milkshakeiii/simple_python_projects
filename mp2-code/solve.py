@@ -86,6 +86,7 @@ def AC3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents):
 
     while len(queue) > 0:
         pent1_idx, pent2_idx = queue.pop()
+        print (len(queue))
         pent1, pent2 = all_pents[pent1_idx], all_pents[pent2_idx]
         if revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1_idx, pent2_idx):
             if len(domains[pent1_idx]) == 0:
@@ -100,7 +101,7 @@ def revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, 
     #revise the domain of pent1 to be consistent with pent2.  return True iff revisions are made.
     revised = False
     remove_us = []
-    
+
     for option_x in domains[pent1_idx]:
         some_y_exists = False
         
@@ -115,9 +116,10 @@ def revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, 
             remove_us.append(option_x)
 
     for remove_me in remove_us:
+        print("removing " + remove_me)
         domains[pent1_idx].remove(remove_me)
         revised = True
-            
+
     return revised
 
 
