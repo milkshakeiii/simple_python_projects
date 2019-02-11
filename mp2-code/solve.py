@@ -9,11 +9,13 @@ def solve(board, pents):
     unassigned_pent_idxs = set([get_pent_idx(pent) for pent in pents])
     solution = []
 
-    return smarter_backtrack(board, unassigned_pent_idxs, pents, solution)
+    result = smarter_backtrack(board, unassigned_pent_idxs, pents, solution)
+    #print(board)
+    return result
 
 
 def smarter_backtrack(board, unassigned_pent_idxs, pents, solution):
-    print(board)
+    #print(board)
     
     if len(unassigned_pent_idxs) == 0:
         return solution if check_correctness(solution, board, pents) else False
@@ -29,14 +31,14 @@ def smarter_backtrack(board, unassigned_pent_idxs, pents, solution):
                 break
 
     assign_me_idx = select_unassigned_variable(board, unassigned_pent_idxs, pents, first_uncovered_square)
-    print (assign_me_idx)
+    #print (assign_me_idx)
     if assign_me_idx == -1:
         return False
     
     assigned_pent_idxs = set([assign_me_idx])
 
     for placement in order_possible_placements(assign_me_idx, board, pents, first_uncovered_square):
-        print (placement)
+        #print (placement)
         rotation = placement[0]
         position = placement[1]
         if not add_pentomino(board, rotation, position):
@@ -62,7 +64,6 @@ def order_possible_placements(assign_me_idx, board, pents, first_uncovered_squar
                 if rotation[x, y] == 0:
                     continue
                 position = (first_uncovered_square[0] - x, first_uncovered_square[1] - y)
-                print(rotation, position)
                 if (add_pentomino(board, rotation, position)):
                     remove_pentomino(board, rotation)
                     placements.append((rotation, position))
@@ -78,7 +79,7 @@ def select_unassigned_variable(board, unassigned_pent_idxs, pents, first_uncover
                     if rotation[x, y] == 0:
                         continue
                     position = (first_uncovered_square[0] - x, first_uncovered_square[1] - y)
-                    print(rotation, position)
+                    #print(rotation, position)
                     if (add_pentomino(board, rotation, position)):
                         remove_pentomino(board, rotation)
                         return get_pent_idx(rotation)
