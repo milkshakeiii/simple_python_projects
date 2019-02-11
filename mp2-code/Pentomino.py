@@ -105,12 +105,14 @@ if __name__ == "__main__":
     board2 = (instances.board_5x12, "5x12")
     board3 = (instances.board_3x20, "3x20")
     board4 = (instances.empty_chessboard, "8x8")
-    boards = [board1, board2, board3, board4]
+    #boards = [board1, board2, board3, board4]
+    boards = [board1]
     
     pents1 = (instances.dominos, "dominos")
     pents2 = (instances.triominos, "triominos")
     pents3 = (instances.petnominos, "petnominos")
-    pents = [pents1, pents2, pents3]
+    #pents = [pents1, pents2, pents3]
+    pents = [pents2]
 
     for board in boards:
         for pent in pents:

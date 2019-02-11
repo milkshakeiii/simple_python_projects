@@ -29,12 +29,14 @@ def smarter_backtrack(board, unassigned_pent_idxs, pents, solution):
                 break
 
     assign_me_idx = select_unassigned_variable(board, unassigned_pent_idxs, pents, first_uncovered_square)
+    print (assign_me_idx)
     if assign_me_idx == -1:
         return False
     
     assigned_pent_idxs = set([assign_me_idx])
 
     for placement in order_possible_placements(assign_me_idx, board, pents, first_uncovered_square):
+        print (placement)
         rotation = placement[0]
         position = placement[1]
         if not add_pentomino(board, rotation, position):
@@ -57,7 +59,10 @@ def order_possible_placements(assign_me_idx, board, pents, first_uncovered_squar
     for rotation in rotated_versions(pents[assign_me_idx]):
         for x in range(len(rotation)):
             for y in range(len(rotation[0])):
-                position = (first_uncovered_square[0] + x, first_uncovered_square[1] + y)
+                if rotation[x, y] == 0:
+                    continue
+                position = (first_uncovered_square[0] - x, first_uncovered_square[1] - y)
+                print(rotation, position)
                 if (add_pentomino(board, rotation, position)):
                     remove_pentomino(board, rotation)
                     placements.append((rotation, position))
@@ -70,7 +75,10 @@ def select_unassigned_variable(board, unassigned_pent_idxs, pents, first_uncover
         for rotation in rotated_versions(pent):
             for x in range(len(rotation)):
                 for y in range(len(rotation[0])):
-                    position = (first_uncovered_square[0] + x, first_uncovered_square[1] + y)
+                    if rotation[x, y] == 0:
+                        continue
+                    position = (first_uncovered_square[0] - x, first_uncovered_square[1] - y)
+                    print(rotation, position)
                     if (add_pentomino(board, rotation, position)):
                         remove_pentomino(board, rotation)
                         return get_pent_idx(rotation)
