@@ -10,11 +10,11 @@ def solve(board, pents):
     solution = []
 
     result = smarter_backtrack(board, unassigned_pent_idxs, pents, solution)
-    #print(board)
+    print(board)
     return result
 
 
-def smarter_backtrack(board, unassigned_pent_idxs, pents, solution):
+def backtrack(board, unassigned_pent_idxs, pents, solution):
     if (len(solution)) <= 2:
         print (board)
     #print(unassigned_pent_idxs)
@@ -87,139 +87,6 @@ def select_unassigned_variable(board, unassigned_pent_idxs, pents, first_uncover
 
 def smarter_inference(board, unassigned_pent_idxs, assigned_pent_idxs, pents):
     return True
-
-    
-
-
-def bad_solve(board, pents):
-    """
-    This is the function you will implement. It will take in a numpy array of the board
-    as well as a list of n tiles in the form of numpy arrays. The solution returned
-    is of the form [(p1, (row1, col1))...(pn,  (rown, coln))]
-    where pi is a tile (may be rotated or flipped), and (rowi, coli) is 
-    the coordinate of the upper left corner of pi in the board (lowest row and column index 
-    that the tile covers).
-    
-    -Use np.flip and np.rot90 to manipulate pentominos.
-    
-    -You can assume there will always be a solution.
-    """
-
-    board = -board #avoid conflicts between place-marker 1s and 1st pentominos
-
-    width = len(board)
-    height = len(board[0])
-    domains = {}
-    for pent in pents:
-        for x in range(width):
-            for y in range(height):
-                pent_rotations = rotated_versions(pent)
-                for rotation in pent_rotations:
-                    if add_pentomino(board, rotation, (x, y)):
-                        option = (rotation, (x, y))
-                        if get_pent_idx(pent) not in domains:
-                            domains[get_pent_idx(pent)] = [option]
-                        domains[get_pent_idx(pent)].append(option)
-                        remove_pentomino(board, rotation)
-
-    print(len(domains[1]))
-    
-    result = backtrack(board, set([get_pent_idx(pent) for pent in pents]), copy.deepcopy(pents), domains, [])
-    return result
-
-
-def backtrack(board, unassigned_pent_idxs, all_pents, domains, solution):
-    if len(unassigned_pent_idxs) == 0:
-        return solution if check_correctness(solution, board, all_pents) else False
-    
-    width = len(board)
-    height = len(board[0])
-
-    assigned_pent_idxs = set()
-    assign_me = list(unassigned_pent_idxs)[0]
-    placement_options = domains[assign_me]
-    assigned_pent_idxs.add(assign_me)
-
-    for option in placement_options:
-        if add_pentomino(board, option[0], option[1]):
-            #print (board)
-            new_domains = copy.deepcopy(domains)
-            inference_success = AC3(board, unassigned_pent_idxs - assigned_pent_idxs, assigned_pent_idxs, new_domains, all_pents)
-            if inference_success:
-                result = backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, all_pents, new_domains, solution + [option])
-                if result:
-                    return result
-                
-        for pent_idx in assigned_pent_idxs:
-            remove_pentomino(board, all_pents[pent_idx])
-
-    return False
-
-
-def AC3(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents):
-    #returns true iff the board seems arc consistent
-    queue = []
-    for pent1 in unassigned_pent_idxs:
-        for pent2 in unassigned_pent_idxs:
-            if pent1 != pent2:
-                queue.append((pent1, pent2))
-
-    width = len(board)
-    height = len(board[0])
-    for key in domains.keys():
-        domains[key] = []
-    for pent in [all_pents[idx] for idx in unassigned_pent_idxs]:
-        for x in range(width):
-            for y in range(height):
-                pent_rotations = rotated_versions(pent)
-                for rotation in pent_rotations:
-                    if add_pentomino(board, rotation, (x, y)):
-                        option = (rotation, (x, y))
-                        domains[get_pent_idx(pent)].append(option)
-                        remove_pentomino(board, rotation)
-
-    print(board)
-    while len(queue) > 0:
-        pent1_idx, pent2_idx = queue.pop()
-        #print (len(queue))
-        pent1, pent2 = all_pents[pent1_idx], all_pents[pent2_idx]
-        if revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1_idx, pent2_idx):
-            if len(domains[pent1_idx]) == 0:
-                return False
-            for pent3 in unassigned_pent_idxs - set([pent2]):
-                queue.add((pent3, pent1))
-    #print(board)
-            
-    return True
-
-
-def revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, pent1_idx, pent2_idx):
-    #revise the domain of pent1 to be consistent with pent2.  return True iff revisions are made.
-    revised = False
-    new_domain = []
-
-    for option_x in domains[pent1_idx]:
-        some_y_exists = False
-        
-        for option_y in domains[pent2_idx]:
-            if not add_pentomino(board, option_y[0], option_y[1]):
-                raise Exception("Invalid option in domain")
-            if add_pentomino(board, option_x[0], option_x[1]):
-                some_y_exists = True
-                if get_pent_idx(option_x[0]) == 0:
-                    raise Exception("ack")
-                if get_pent_idx(option_y[0]) == 0:
-                    raise Exception("ack")
-                remove_pentomino(board, option_x[0])
-                remove_pentomino(board, option_y[0])
-                break
-            remove_pentomino(board, option_y[0])
-        if some_y_exists:
-            new_domain.append(option_x)
-
-    domains[pent1_idx] = new_domain
-
-    return revised
 
 
 def in_bounds(placement, board):
