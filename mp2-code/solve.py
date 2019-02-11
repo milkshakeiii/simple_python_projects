@@ -15,7 +15,9 @@ def solve(board, pents):
 
 
 def smarter_backtrack(board, unassigned_pent_idxs, pents, solution):
-    #print(board)
+    if (len(solution)) <= 2:
+        print (board)
+    #print(unassigned_pent_idxs)
     
     if len(unassigned_pent_idxs) == 0:
         return solution if check_correctness(solution, board, pents) else False
@@ -30,28 +32,24 @@ def smarter_backtrack(board, unassigned_pent_idxs, pents, solution):
                 first_uncovered_square = (x, y)
                 break
 
-    assign_me_idx = select_unassigned_variable(board, unassigned_pent_idxs, pents, first_uncovered_square)
-    #print (assign_me_idx)
-    if assign_me_idx == -1:
-        return False
-    
-    assigned_pent_idxs = set([assign_me_idx])
-
-    for placement in order_possible_placements(assign_me_idx, board, pents, first_uncovered_square):
-        #print (placement)
-        rotation = placement[0]
-        position = placement[1]
-        if not add_pentomino(board, rotation, position):
-            raise Exception("Invalid placement")
-        
-        inference_success = smarter_inference(board, unassigned_pent_idxs - assigned_pent_idxs, assigned_pent_idxs, pents)
-        if inference_success:
-            result = smarter_backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, pents, solution + [(rotation, position)])
-            if result:
-                return result
-                
-        for pent_idx in assigned_pent_idxs:
-            remove_pentomino(board, pents[pent_idx])
+    for assign_me_idx in unassigned_pent_idxs:
+        assigned_pent_idxs = set([assign_me_idx])
+        #print (assign_me_idx)
+        #print (order_possible_placements(assign_me_idx, board, pents, first_uncovered_square))
+        for placement in order_possible_placements(assign_me_idx, board, pents, first_uncovered_square):
+            rotation = placement[0]
+            position = placement[1]
+            if not add_pentomino(board, rotation, position):
+                raise Exception("Invalid placement")
+            
+            inference_success = smarter_inference(board, unassigned_pent_idxs - assigned_pent_idxs, assigned_pent_idxs, pents)
+            if inference_success:
+                result = smarter_backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, pents, solution + [(rotation, position)])
+                if result:
+                    return result
+                    
+            for pent_idx in assigned_pent_idxs:
+                remove_pentomino(board, pents[pent_idx])
 
     return False
 
@@ -227,7 +225,9 @@ def revise(board, unassigned_pent_idxs, assigned_pent_idxs, domains, all_pents, 
 def in_bounds(placement, board):
     for x in range(len(placement[0])):
         for y in range(len(placement[0][0])):
-            if placement[0][x][y] != 0 and (placement[1][0] + x >= len(board) or placement[1][1] + y >= len(board[0])):
+            try_x = placement[1][0] + x
+            try_y = placement[1][1] + y
+            if placement[0][x][y] != 0 and (try_x >= len(board) or try_y >= len(board[0]) or try_y < 0 or try_x < 0):
                 return False
     return True    
 
@@ -239,11 +239,19 @@ def rotated_versions(pent):
     versions.append(np.rot90(pent))
     versions.append(np.rot90(np.rot90(pent)))
     versions.append(np.rot90(np.rot90(np.rot90(pent))))
-    versions.append(np.flip(pent))
-    versions.append(np.flip(np.rot90(pent)))
-    versions.append(np.flip(np.rot90(np.rot90(pent))))
-    versions.append(np.flip(np.rot90(np.rot90(np.rot90(pent)))))
-    return versions
+    versions.append(np.flip(pent, 0))
+    versions.append(np.flip(np.rot90(pent), 0))
+    versions.append(np.flip(np.rot90(np.rot90(pent)), 0))
+    versions.append(np.flip(np.rot90(np.rot90(np.rot90(pent))), 0))
+    unique_versions = []
+    for version in versions:
+        unique = True
+        for compare in unique_versions:
+            if version.shape == compare.shape and(version == compare).all():
+                unique = False
+        if unique:
+            unique_versions.append(version)
+    return unique_versions
 
                         
 def add_pentomino(board, pent, coord):
