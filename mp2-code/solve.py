@@ -2,21 +2,21 @@
 import numpy as np
 import copy
 
-
 def solve(board, pents):
     board = -board
     pents = copy.deepcopy(pents)
     unassigned_pent_idxs = set([get_pent_idx(pent) for pent in pents])
     solution = []
+    rotated_versions(0, pents[0], reset_memos = True)
 
-    result = smarter_backtrack(board, unassigned_pent_idxs, pents, solution)
-    print(board)
+    result = backtrack(board, unassigned_pent_idxs, pents, solution)
+    #print(board)
     return result
 
 
 def backtrack(board, unassigned_pent_idxs, pents, solution):
-    if (len(solution)) <= 2:
-        print (board)
+    #if (len(solution)) <= 2:
+    #    print (board)
     #print(unassigned_pent_idxs)
     
     if len(unassigned_pent_idxs) == 0:
@@ -39,67 +39,49 @@ def backtrack(board, unassigned_pent_idxs, pents, solution):
         for placement in order_possible_placements(assign_me_idx, board, pents, first_uncovered_square):
             rotation = placement[0]
             position = placement[1]
-            if not add_pentomino(board, rotation, position):
+            if not add_pentomino(board, rotation, assign_me_idx, position):
                 raise Exception("Invalid placement")
             
-            inference_success = smarter_inference(board, unassigned_pent_idxs - assigned_pent_idxs, assigned_pent_idxs, pents)
-            if inference_success:
-                result = smarter_backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, pents, solution + [(rotation, position)])
-                if result:
-                    return result
+            result = backtrack(board, unassigned_pent_idxs - assigned_pent_idxs, pents, solution + [(rotation, position)])
+            if result:
+                return result
                     
             for pent_idx in assigned_pent_idxs:
-                remove_pentomino(board, pents[pent_idx])
+                remove_pentomino(board, pent_idx)
 
     return False
 
 
 def order_possible_placements(assign_me_idx, board, pents, first_uncovered_square):
     placements = []
-    for rotation in rotated_versions(pents[assign_me_idx]):
-        for x in range(len(rotation)):
-            for y in range(len(rotation[0])):
-                if rotation[x, y] == 0:
-                    continue
-                position = (first_uncovered_square[0] - x, first_uncovered_square[1] - y)
-                if (add_pentomino(board, rotation, position)):
-                    remove_pentomino(board, rotation)
-                    placements.append((rotation, position))
+    for rotation in rotated_versions(assign_me_idx, pents[assign_me_idx]):
+        x = first_uncovered_square[0] - rotation.shape[0] + 1
+        last_row = rotation[-1]
+        first_square = min([i for i in range(len(last_row)) if last_row[i] != 0])
+        y = first_uncovered_square[1] - first_square
+        position = (x, y)
+        if (add_pentomino(board, rotation, assign_me_idx, position)):
+            remove_pentomino(board, assign_me_idx)
+            placements.append((rotation, position))
     
     return placements
 
 
-def select_unassigned_variable(board, unassigned_pent_idxs, pents, first_uncovered_square):
-    for pent in [pents[i] for i in range(len(pents)) if i in unassigned_pent_idxs]:
-        for rotation in rotated_versions(pent):
-            for x in range(len(rotation)):
-                for y in range(len(rotation[0])):
-                    if rotation[x, y] == 0:
-                        continue
-                    position = (first_uncovered_square[0] - x, first_uncovered_square[1] - y)
-                    #print(rotation, position)
-                    if (add_pentomino(board, rotation, position)):
-                        remove_pentomino(board, rotation)
-                        return get_pent_idx(rotation)
-
-    return -1
-
-
-def smarter_inference(board, unassigned_pent_idxs, assigned_pent_idxs, pents):
-    return True
-
-
 def in_bounds(placement, board):
-    for x in range(len(placement[0])):
-        for y in range(len(placement[0][0])):
-            try_x = placement[1][0] + x
-            try_y = placement[1][1] + y
-            if placement[0][x][y] != 0 and (try_x >= len(board) or try_y >= len(board[0]) or try_y < 0 or try_x < 0):
-                return False
-    return True    
+    pent = placement[0]
+    x, y = placement[1]
+    return not (x < 0 or y < 0 or x + pent.shape[0] - 1 >= board.shape[0] or y + pent.shape[1] - 1 >= board.shape[1])
 
 
-def rotated_versions(pent):
+memos = {}
+def rotated_versions(pent_idx, pent, reset_memos = False):
+    if reset_memos:
+        keys = list(memos.keys())
+        for key in keys:
+            del memos[key]
+    if pent_idx in memos:
+        return memos[pent_idx]
+    
     #returns a list of all rotated versions of the pentomino
     versions = []
     versions.append(pent)
@@ -118,26 +100,30 @@ def rotated_versions(pent):
                 unique = False
         if unique:
             unique_versions.append(version)
+
+    memos[pent_idx] = unique_versions
     return unique_versions
 
                         
-def add_pentomino(board, pent, coord):
+def add_pentomino(board, pent, pent_idx, coord):
     if not in_bounds((pent, coord), board):
         return False
-    
+
+    assigned_squares = []
     for row in range(pent.shape[0]):
         for col in range(pent.shape[1]):
             if pent[row][col] != 0:
                 if board[coord[0]+row][coord[1]+col] != -1: # Overlap or zero-covering
-                    remove_pentomino(board, pent)
+                    for square in assigned_squares:
+                        board[square[0]][square[1]] = -1
                     return False
                 else:
                     board[coord[0]+row][coord[1]+col] = pent[row][col]
+                    assigned_squares.append((coord[0]+row, coord[1]+col))
     return True
 
 
-def remove_pentomino(board, pent):
-    pent_idx = get_pent_idx(pent)
+def remove_pentomino(board, pent_idx):
     board[board==pent_idx+1] = -1
 
 
