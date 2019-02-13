@@ -3,6 +3,19 @@ import numpy as np
 import copy
 
 def solve(board, pents):
+    """
+    This is the function you will implement. It will take in a numpy array of the board
+    as well as a list of n tiles in the form of numpy arrays. The solution returned
+    is of the form [(p1, (row1, col1))...(pn,  (rown, coln))]
+    where pi is a tile (may be rotated or flipped), and (rowi, coli) is 
+    the coordinate of the upper left corner of pi in the board (lowest row and column index 
+    that the tile covers).
+    
+    -Use np.flip and np.rot90 to manipulate pentominos.
+    
+    -You can assume there will always be a solution.
+    """
+    
     board = copy.deepcopy(board)
     pents = copy.deepcopy(pents)
 
@@ -12,47 +25,52 @@ def solve(board, pents):
     unassigned_pent_idxs = set([i for i in range(len(pents))])
     solution = []
     rotated_versions(0, pents[0], reset_memos = True)
-    square_pents_to_options = build_options_dict(copy.deepcopy(board), pents)
+    square_pents_to_options, bin_to_pent_retrieval = build_options_dict(copy.deepcopy(board), pents)
 
     bin_board = board_to_binary(1 - board)
     result = backtrack(bin_board,
                        width,
                        height,
+                       1,
                        unassigned_pent_idxs,
                        pents,
                        solution,
                        square_pents_to_options)
-    #print(board)
+    result = [bin_to_pent_retrieval[placement] for placement in result]
     return result
 
 
-def backtrack(board, width, height, unassigned_pent_idxs, pents, solution, square_pents_to_options):
-    #bin_print(board, 12)
+def backtrack(board,
+              width,
+              height,
+              first_uncovered_square,
+              unassigned_pent_idxs,
+              pents,
+              solution,
+              square_pents_to_options):
+    
     if (len(unassigned_pent_idxs) == 0):
         return solution
 
-    first_uncovered_square = 1 #find the first square with no collision
+    #find the first square with no collision
     while (first_uncovered_square&board):
         first_uncovered_square *= 2
-    #print(first_uncovered_square)
 
     for assign_me_idx in unassigned_pent_idxs:
         assigned_pent_idxs = set([assign_me_idx])
         
         if (first_uncovered_square, assign_me_idx) not in square_pents_to_options:
-            #print ("no placements found")
-            continue #this piece won't fit here
+            continue #this piece won't ever fit here
         
         for placement in square_pents_to_options[(first_uncovered_square, assign_me_idx)]:
-            #print ("placement: " + str(placement))
             if placement&board: #there is an overlap
-                #print ("overlap")
                 continue
 
             #bitwise or | will do an intersection AKA place the piece
             result = backtrack(placement|board,
                                width,
                                height,
+                               first_uncovered_square,
                                unassigned_pent_idxs - assigned_pent_idxs,
                                pents,
                                solution + [(placement, assign_me_idx)],
@@ -62,6 +80,17 @@ def backtrack(board, width, height, unassigned_pent_idxs, pents, solution, squar
 
     return False
 
+def and1(a, b):
+    return a&b
+
+def and2(a, b):
+    return a&b
+
+def or1(a, b):
+    return a|b
+
+def two1(a):
+    return a*2
 
 def square_to_positional(x, y, width, height):
     return 2**(height*(width-x) - y - 1)
@@ -94,6 +123,7 @@ def in_bounds(placement, board):
 def build_options_dict(board, pents):
     board.fill(0)
     square_pents_to_options = {}
+    bin_to_pent_retrieval = {}
     width = board.shape[0]
     height = board.shape[1]
 
@@ -108,10 +138,12 @@ def build_options_dict(board, pents):
                         positional = square_to_positional(x, y, width, height)
                         if (positional, pent_idx) not in square_pents_to_options:
                             square_pents_to_options[positional, pent_idx] = []
-                        square_pents_to_options[positional, pent_idx].append(board_to_binary(board))
+                        binary = board_to_binary(board)
+                        square_pents_to_options[positional, pent_idx].append(binary)
+                        bin_to_pent_retrieval[(binary, pent_idx)] = placement
                         board.fill(0)
 
-    return square_pents_to_options
+    return square_pents_to_options, bin_to_pent_retrieval
 
 
 def board_to_binary(board):
@@ -174,6 +206,24 @@ def add_pentomino(board, pent, pent_idx, coord):
                     board[coord[0]+row][coord[1]+col] = pent[row][col]
                     assigned_squares.append((coord[0]+row, coord[1]+col))
     return True
+
+
+def get_pent_idx(pent):
+    """
+    Returns the index of a pentomino.
+    """
+    pidx = 0
+    for i in range(pent.shape[0]):
+        for j in range(pent.shape[1]):
+            if pent[i][j] != 0:
+                pidx = pent[i][j]
+                break
+        if pidx != 0:
+            break
+    if pidx == 0:
+        return -1
+    return pidx - 1
+
 
 def bin_print(n, width):
     print("")
