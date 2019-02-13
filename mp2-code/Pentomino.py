@@ -105,7 +105,7 @@ if __name__ == "__main__":
     board2 = (instances.board_5x12, "5x12")
     board3 = (instances.board_3x20, "3x20")
     board4 = (instances.empty_chessboard, "8x8")
-    boards = [board1, board2, board3, board4]
+    boards = [board1, board2, board4, board3]
     #boards = [board4]
     
     pents1 = (instances.dominos, "dominos")
@@ -126,7 +126,7 @@ if __name__ == "__main__":
                 print("PASSED with " + attempt_string)
             else:
                 print("FAILED with " + attempt_string)
-                print(pent[0])
+                print(solution)
     
     
    
