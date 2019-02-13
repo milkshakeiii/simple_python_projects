@@ -2,6 +2,63 @@
 import numpy as np
 import copy
 
+
+def alg_x_solve(board, pents):
+    board = copy.deepcopy(board)
+    pents = copy.deepcopy(pents)
+    rotated_versions(0, pents[0], reset_memos = True)
+
+    alg_x_matrix, piece_list = build_alg_x_matrix(board, pents)
+
+    result = alg_x(alg_x_matrix, [])
+    return result
+
+
+def build_alg_x_matrix(board, pents):
+    board = 1 - board
+    orig_board = copy.deepcopy(board)
+    orig_board_binary = board_to_binary(orig_board)
+    width = len(board)
+    height = len(board[0])
+    
+    all_pieces = []
+    piece_retrieval_list = []
+
+    for pent_idx in range(len(pents)):
+        pent = pents[pent_idx]
+        for rotation in rotated_versions(pent_idx, pent):
+            for x in range(width):
+                for y in range(height):
+                    if (add_pentomino(board, rotation, pent_idx, (x, y))):
+                        board_and_piece = board_to_binary(board)
+                        piece_only = board_and_piece^orig_board_binary
+                        all_pieces.append(piece_only)
+                        piece_retrieval_list.append((rotation, (x, y)))
+                        board = copy.deepcopy(orig_board)
+
+    all_pieces_arrays = [np.array([0]*(width*height-len(bin(piece))+2) + list(map(int, (bin(piece)[2:])))) for piece in all_pieces]
+    return np.array(all_pieces_arrays), piece_retrieval_list
+
+
+def alg_x(alg_x_matrix, solution):
+    if alg_x_matrix.shape[1] == 0:
+        return solution
+
+    column = choose_column(alg_x_matrix)
+
+    row = None
+    for i in len(alg_x_matrix):
+        this_row = alg_x_matrix[i]
+        if row[column] == 1:
+            solution.append(i)
+
+
+def choose_column(matrix):
+    sums = [num if num != 0 else float('inf') for num in np.sum(matrix, 0)]
+    return sums.index(min(sums))
+   
+
+
 def solve(board, pents):
     """
     This is the function you will implement. It will take in a numpy array of the board
@@ -59,13 +116,22 @@ def backtrack(board,
               pents,
               solution,
               square_pents_to_options):
+    '''
+    This algorithm has a lot of similarities to Donald Knuth's "Algorithm X."  The main difference
+    is this algorithm does not delete subsets which cover members that have already been covered.
+    Instead, it reduces the occurence of overlap by covering the farthest/lowest square at each
+    step and only considering dominos which cover exclusively nearer/higher squares than the square
+    being considered.
+    '''
     
     if (len(unassigned_pent_idxs) == 0):
         return solution
 
-    #find the first square with no collision starting from a corner and "snaking" up the board.
+    #find the first square with no collision starting from a corner and choosing the farthest/
+    #bottemest square at each step.
     #because of this selection heuristic we always choose a square in a corner maximally
-    #surrounded by filled squares.  this is a form of "least remaining values" heuristic since
+    #surrounded by filled squares.
+    #this is a form of "least remaining values" heuristic since
     #thre are fewer ways to place dominoes around borders.
     while (first_uncovered_square&board):
         first_uncovered_square *= 2
