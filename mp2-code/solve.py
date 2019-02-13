@@ -80,17 +80,6 @@ def backtrack(board,
 
     return False
 
-def and1(a, b):
-    return a&b
-
-def and2(a, b):
-    return a&b
-
-def or1(a, b):
-    return a|b
-
-def two1(a):
-    return a*2
 
 def square_to_positional(x, y, width, height):
     return 2**(height*(width-x) - y - 1)
