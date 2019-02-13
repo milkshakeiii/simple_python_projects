@@ -190,7 +190,7 @@ class ultimateTicTacToe:
 
 if __name__=="__main__":
     uttt=ultimateTicTacToe()
-    gameBoards, bestMove, bestValue, winner=uttt.playGameReflexAgent()
+    gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(True,False,False)
     if winner == 1:
         print("The winner is maxPlayer!!!")
     elif winner == -1:
