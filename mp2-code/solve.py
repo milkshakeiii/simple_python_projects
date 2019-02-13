@@ -19,6 +19,15 @@ def solve(board, pents):
     board = copy.deepcopy(board)
     pents = copy.deepcopy(pents)
 
+    #rotating the board ensures that the algorithm always fills in dominos along SHORT axis first.
+    #because of the way pentominoes are shaped, many immediately create unfillable holes when
+    #placed near walls.  filling in the short axis first ensures that we search the area around
+    #a pentomino for unfillable squares soon after placing the pentomino.  this prevents early
+    #undetected failure and drastically increases performance of the algorithm.
+    if (board.shape[0] < board.shape[1]):
+        rotated = True
+        board = np.rot90(board)
+
     width = len(board)
     height = len(board[0])
     
@@ -37,6 +46,8 @@ def solve(board, pents):
                        solution,
                        square_pents_to_options)
     result = [bin_to_pent_retrieval[placement] for placement in result]
+    if rotated:
+        result = [(np.flip(np.rot90(placement[0]), 0), (placement[1][1], placement[1][0])) for placement in result]
     return result
 
 
@@ -52,7 +63,10 @@ def backtrack(board,
     if (len(unassigned_pent_idxs) == 0):
         return solution
 
-    #find the first square with no collision
+    #find the first square with no collision starting from a corner and "snaking" up the board.
+    #because of this selection heuristic we always choose a square in a corner maximally
+    #surrounded by filled squares.  this is a form of "least remaining values" heuristic since
+    #thre are fewer ways to place dominoes around borders.
     while (first_uncovered_square&board):
         first_uncovered_square *= 2
 

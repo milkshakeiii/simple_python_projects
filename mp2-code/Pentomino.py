@@ -78,7 +78,9 @@ def check_correctness(sol_list, board, pents):
             return False
         else:
             seen_pents[pidx] = 1
-        if not add_pentomino(sol_board, pent, coord, True, pents): 
+        if not add_pentomino(sol_board, pent, coord, True, pents):
+            print("add pentomino failed: ")
+            print(sol_board, pent, coord)
             return False
             
     # Check same number of squares occupied
