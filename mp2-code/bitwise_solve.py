@@ -27,23 +27,26 @@ def solve(board, pents):
 
 
 def backtrack(board, width, height, unassigned_pent_idxs, pents, solution, square_pents_to_options):
+    #bin_print(board, 12)
     if (len(unassigned_pent_idxs) == 0):
         return solution
 
-    first_uncovered_square = None
-    board_string = bin(board)
-    for i in range(2, len(board_string)):
-        positional = i-2
-        if board_string[i] == "0":
-            first_uncovered_square = (positional%width, positional//height)
-            break
-    print (first_uncovered_square)
+    first_uncovered_square = 1 #find the first square with no collision
+    while (first_uncovered_square&board):
+        first_uncovered_square *= 2
+    #print(first_uncovered_square)
 
     for assign_me_idx in unassigned_pent_idxs:
         assigned_pent_idxs = set([assign_me_idx])
+        
+        if (first_uncovered_square, assign_me_idx) not in square_pents_to_options:
+            #print ("no placements found")
+            continue #this piece won't fit here
+        
         for placement in square_pents_to_options[(first_uncovered_square, assign_me_idx)]:
-            
+            #print ("placement: " + str(placement))
             if placement&board: #there is an overlap
+                #print ("overlap")
                 continue
 
             #bitwise or | will do an intersection AKA place the piece
@@ -60,13 +63,17 @@ def backtrack(board, width, height, unassigned_pent_idxs, pents, solution, squar
     return False
 
 
-def order_possible_placements(assign_me_idx, board, pents, first_uncovered_square):
+def square_to_positional(x, y, width, height):
+    return 2**(height*(width-x) - y - 1)
+
+
+def order_possible_placements(assign_me_idx, board, pents, square):
     placements = []
     for rotation in rotated_versions(assign_me_idx, pents[assign_me_idx]):
-        x = first_uncovered_square[0] - rotation.shape[0] + 1
+        x = square[0] - rotation.shape[0] + 1
         last_row = rotation[-1]
-        first_square = min([i for i in range(len(last_row)) if last_row[i] != 0])
-        y = first_uncovered_square[1] - first_square
+        first_square = max([i for i in range(len(last_row)) if last_row[i] != 0])
+        y = square[1] - first_square
         position = (x, y)
         if (add_pentomino(board, rotation, assign_me_idx, position)):
             board.fill(0)
@@ -98,12 +105,14 @@ def build_options_dict(board, pents):
                     if not (add_pentomino(board, placement[0], pent_idx, placement[1])):
                         raise Exception("invalid placement")
                     else:
-                        if ((x, y), pent_idx) not in square_pents_to_options:
-                            square_pents_to_options[(x, y), pent_idx] = []
-                        square_pents_to_options[(x, y), pent_idx].append(board_to_binary(board))
+                        positional = square_to_positional(x, y, width, height)
+                        if (positional, pent_idx) not in square_pents_to_options:
+                            square_pents_to_options[positional, pent_idx] = []
+                        square_pents_to_options[positional, pent_idx].append(board_to_binary(board))
                         board.fill(0)
 
     return square_pents_to_options
+
 
 def board_to_binary(board):
     binary = 0
@@ -167,8 +176,10 @@ def add_pentomino(board, pent, pent_idx, coord):
     return True
 
 def bin_print(n, width):
+    print("")
     s = bin(n)
-    for i in range(1, len(s)):
+    for i in range(1, len(s)-1):
         print(s[-i], end='')
-        if (i-1)%width == 0:
+        if (i)%width == 0:
             print("")
+    print("")
