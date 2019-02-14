@@ -3,14 +3,14 @@ import numpy as np
 import copy
 
 
-def alg_x_solve(board, pents):
+def solve(board, pents):
     board = copy.deepcopy(board)
     pents = copy.deepcopy(pents)
     rotated_versions(0, pents[0], reset_memos = True)
 
     alg_x_matrix, piece_list = build_alg_x_matrix(board, pents)
 
-    result = alg_x(alg_x_matrix, [])
+    result = alg_x(alg_x_matrix, piece_list, [])
     return result
 
 
@@ -37,20 +37,57 @@ def build_alg_x_matrix(board, pents):
                         board = copy.deepcopy(orig_board)
 
     all_pieces_arrays = [np.array([0]*(width*height-len(bin(piece))+2) + list(map(int, (bin(piece)[2:])))) for piece in all_pieces]
-    return np.array(all_pieces_arrays), piece_retrieval_list
+    matrix = np.array(all_pieces_arrays)
+
+    #delete squares we can't/shouldn't cover
+    sums = [num for num in np.sum(matrix, 0)]
+    delete_us = set()
+    for i in range(len(sums)):
+        if sums[i] == 0:
+            delete_us.add(i)
+    for i in sorted(delete_us, reverse=True):
+        matrix = np.delete(matrix, i, 1)
+
+    return matrix, piece_retrieval_list
 
 
-def alg_x(alg_x_matrix, solution):
+def alg_x(alg_x_matrix, piece_list, solution):
     if alg_x_matrix.shape[1] == 0:
         return solution
+    if alg_x_matrix.shape[0] == 0:
+        return False
 
     column = choose_column(alg_x_matrix)
 
-    row = None
-    for i in len(alg_x_matrix):
-        this_row = alg_x_matrix[i]
-        if row[column] == 1:
-            solution.append(i)
+    for i in range(len(alg_x_matrix)):
+        row = alg_x_matrix[i]
+        if row[column] != 1:
+            continue
+
+        delete_us_rows = set()
+        delete_us_columns = set()
+        for j in range(len(alg_x_matrix[0])):
+            if row[j] == 1:
+                for k in range(len(alg_x_matrix)):
+                    if alg_x_matrix[k][j] == 1:
+                        delete_us_rows.add(k)
+                delete_us_columns.add(j)
+
+        new_solution = solution + [piece_list[i]]
+        new_piece_list = copy.deepcopy(piece_list)
+        new_alg_x_matrix = copy.deepcopy(alg_x_matrix)
+        for i in sorted(delete_us_rows, reverse=True):
+            del new_piece_list[i]
+            new_alg_x_matrix = np.delete(new_alg_x_matrix, i, 0)
+
+        for j in sorted(delete_us_columns, reverse=True):
+            new_alg_x_matrix = np.delete(new_alg_x_matrix, j, 1)
+
+        result = alg_x(new_alg_x_matrix, new_piece_list, new_solution)
+        if result:
+            return result
+        
+    
 
 
 def choose_column(matrix):
@@ -59,7 +96,7 @@ def choose_column(matrix):
    
 
 
-def solve(board, pents):
+def csp_solve(board, pents):
     """
     This is the function you will implement. It will take in a numpy array of the board
     as well as a list of n tiles in the form of numpy arrays. The solution returned
@@ -81,6 +118,7 @@ def solve(board, pents):
     #placed near walls.  filling in the short axis first ensures that we search the area around
     #a pentomino for unfillable squares soon after placing the pentomino.  this prevents early
     #undetected failure and drastically increases performance of the algorithm.
+    rotated = False
     if (board.shape[0] < board.shape[1]):
         rotated = True
         board = np.rot90(board)
