@@ -59,20 +59,26 @@ class ultimateTicTacToe:
         score(float): estimated utility score for maxPlayer or minPlayer
         """
         if isMax:
-            if count_3_in_a_row(self.maxPlayer) > 0:
+            if self.count_3_in_a_row(self.maxPlayer) > 0:
                 return self.winnerMaxUtility
-            elif count_2_in_a_row(self.maxPlayer) > 0 or count_preventions > 0:
-                return self.twoInARowMaxUtility*count_2_in_a_row(self.maxPlayer) + self.preventThreeInARowMaxUtility*count_prevensions(self.maxPlayer, self.minPlayer)
+            elif self.count_2_in_a_row(self.maxPlayer) > 0 or self.count_preventions(self.maxPlayer, self.minPlayer) > 0:
+                return self.twoInARowMaxUtility*self.count_2_in_a_row(self.maxPlayer) + self.preventThreeInARowMaxUtility*self.count_preventions(self.maxPlayer, self.minPlayer)
             else:
-                
+                return self.cornerMaxUtility*self.count_corners(self.maxPlayer)
         else:
+            if self.count_3_in_a_row(self.minPlayer) > 0:
+                return self.winnerMinUtility
+            elif self.count_2_in_a_row(self.minPlayer) > 0 or self.count_preventions(self.minPlayer, self.maxPlayer) > 0:
+                return self.twoInARowMinUtility*self.count_2_in_a_row(self.minPlayer) + self.preventThreeInARowMinUtility*self.count_prevensions(self.minPlayer, self.maxPlayer)
+            else:
+                return self.cornerMinUtility*self.count_corners(self.minPlayer)
             
         
         score=0
         return score
 
 
-    def count_corners(player_marker):
+    def count_corners(self, player_marker):
         count = 0
         for local_board in self.board:
             if (local_board[0] == player_marker):
@@ -86,179 +92,179 @@ class ultimateTicTacToe:
         return count
 
 
-    def count_preventions(player_marker, enemy_marker):
+    def count_preventions(self, player_marker, enemy_marker):
         preventions = set()
         for local_board in self.board:
             #  XX_
-            if (local_board[0] == local_boad[1] == enemy_marker) and (local_board[2] == player_marker):
+            if (local_board[0] == local_board[1] == enemy_marker) and (local_board[2] == player_marker):
                 preventions.add(2)
-            if (local_board[3] == local_boad[4] == enemy_marker) and (local_board[5] == player_marker):
+            if (local_board[3] == local_board[4] == enemy_marker) and (local_board[5] == player_marker):
                 preventions.add(5)
-            if (local_board[6] == local_boad[7] == enemy_marker) and (local_board[8] == player_marker):
+            if (local_board[6] == local_board[7] == enemy_marker) and (local_board[8] == player_marker):
                 preventions.add(8)
 
             #  _XX
-            if (local_board[1] == local_boad[2] == enemy_marker) and (local_board[0] == player_marker):
+            if (local_board[1] == local_board[2] == enemy_marker) and (local_board[0] == player_marker):
                 preventions.add(0)
-            if (local_board[4] == local_boad[5] == enemy_marker) and (local_board[3] == player_marker):
+            if (local_board[4] == local_board[5] == enemy_marker) and (local_board[3] == player_marker):
                 preventions.add(3)
-            if (local_board[7] == local_boad[8] == enemy_marker) and (local_board[6] == player_marker):
+            if (local_board[7] == local_board[8] == enemy_marker) and (local_board[6] == player_marker):
                 preventions.add(6)
 
             #  X_X
-            if (local_board[0] == local_boad[2] == enemy_marker) and (local_board[1] == player_marker):
+            if (local_board[0] == local_board[2] == enemy_marker) and (local_board[1] == player_marker):
                 preventions.add(1)
-            if (local_board[3] == local_boad[5] == enemy_marker) and (local_board[4] == player_marker):
+            if (local_board[3] == local_board[5] == enemy_marker) and (local_board[4] == player_marker):
                 preventions.add(4)
-            if (local_board[6] == local_boad[8] == enemy_marker) and (local_board[7] == player_marker):
+            if (local_board[6] == local_board[8] == enemy_marker) and (local_board[7] == player_marker):
                 preventions.add(7)
 
             #  X
             #  X
             #  _
-            if (local_board[0] == local_boad[3] == enemy_marker) and (local_board[6] == player_marker):
+            if (local_board[0] == local_board[3] == enemy_marker) and (local_board[6] == player_marker):
                 preventions.add(6)
-            if (local_board[1] == local_boad[4] == enemy_marker) and (local_board[7] == player_marker):
+            if (local_board[1] == local_board[4] == enemy_marker) and (local_board[7] == player_marker):
                 preventions.add(7)
-            if (local_board[2] == local_boad[5] == enemy_marker) and (local_board[8] == player_marker):
+            if (local_board[2] == local_board[5] == enemy_marker) and (local_board[8] == player_marker):
                 preventions.add(8)
 
             #  _
             #  X
             #  X
-            if (local_board[3] == local_boad[6] == player_marker) and (local_board[0] == player_marker):
+            if (local_board[3] == local_board[6] == player_marker) and (local_board[0] == player_marker):
                 preventions.add(0)
-            if (local_board[4] == local_boad[7] == player_marker) and (local_board[1] == player_marker):
+            if (local_board[4] == local_board[7] == player_marker) and (local_board[1] == player_marker):
                 preventions.add(1)
-            if (local_board[5] == local_boad[8] == player_marker) and (local_board[2] == player_marker):
+            if (local_board[5] == local_board[8] == player_marker) and (local_board[2] == player_marker):
                 preventions.add(2)
 
             #  X
             #  _
             #  X
-            if (local_board[0] == local_boad[6] == enemy_marker) and (local_board[3] == player_marker):
+            if (local_board[0] == local_board[6] == enemy_marker) and (local_board[3] == player_marker):
                 preventions.add(3)
-            if (local_board[1] == local_boad[7] == enemy_marker) and (local_board[4] == player_marker):
+            if (local_board[1] == local_board[7] == enemy_marker) and (local_board[4] == player_marker):
                 preventions.add(4)
-            if (local_board[2] == local_boad[8] == enemy_marker) and (local_board[5] == player_marker):
+            if (local_board[2] == local_board[8] == enemy_marker) and (local_board[5] == player_marker):
                 preventions.add(5)
 
             #  X__
             #  ___
             #  __X
-            if (local_board[0] == local_boad[8] == enemy_marker) and (local_board[4] == player_marker):
+            if (local_board[0] == local_board[8] == enemy_marker) and (local_board[4] == player_marker):
                 preventions.add(4)
 
             #  __X
             #  ___
             #  X__
-            if (local_board[2] == local_boad[6] == enemy_marker) and (local_board[4] == player_marker):
+            if (local_board[2] == local_board[6] == enemy_marker) and (local_board[4] == player_marker):
                 preventions.add(4)
 
         return len(preventions)
             
 
 
-    def count_3_in_a_row(player_marker):
+    def count_3_in_a_row(self, player_marker):
         count = 0
         for local_board in self.board:
             #  XXX
-            if (local_board[0] == local_boad[1] == local_board[2] == player_marker):
+            if (local_board[0] == local_board[1] == local_board[2] == player_marker):
                 count += 1
-            if (local_board[3] == local_boad[4] == local_board[5] == player_marker):
+            if (local_board[3] == local_board[4] == local_board[5] == player_marker):
                 count += 1
-            if (local_board[6] == local_boad[7] == local_board[8] == player_marker):
+            if (local_board[6] == local_board[7] == local_board[8] == player_marker):
                 count += 1
 
             #  X
             #  X
             #  X
-            if (local_board[0] == local_boad[3] == local_board[6] == player_marker):
+            if (local_board[0] == local_board[3] == local_board[6] == player_marker):
                 count += 1
-            if (local_board[1] == local_boad[4] == local_board[7] == player_marker):
+            if (local_board[1] == local_board[4] == local_board[7] == player_marker):
                 count += 1
-            if (local_board[2] == local_boad[5] == local_board[8] == player_marker):
+            if (local_board[2] == local_board[5] == local_board[8] == player_marker):
                 count += 1
 
             #  X__       __X
             #  _X_  and  _X_
             #  __X       X__
-            if (local_board[0] == local_boad[4] == local_board[8] == player_marker):
+            if (local_board[0] == local_board[4] == local_board[8] == player_marker):
                 count += 1
-            if (local_board[2] == local_boad[4] == local_board[6] == player_marker):
+            if (local_board[2] == local_board[4] == local_board[6] == player_marker):
                 count += 1
 
 
         return count
 
 
-    def count_2_in_a_row(player_marker):
+    def count_2_in_a_row(self, player_marker):
         count = 0
         for local_board in self.board:
             #  XX_
-            if (local_board[0] == local_boad[1] == player_marker) and (local_board[2] == '_'):
+            if (local_board[0] == local_board[1] == player_marker) and (local_board[2] == '_'):
                 count += 1
-            if (local_board[3] == local_boad[4] == player_marker) and (local_board[5] == '_'):
+            if (local_board[3] == local_board[4] == player_marker) and (local_board[5] == '_'):
                 count += 1
-            if (local_board[6] == local_boad[7] == player_marker) and (local_board[8] == '_'):
+            if (local_board[6] == local_board[7] == player_marker) and (local_board[8] == '_'):
                 count += 1
 
             #  _XX
-            if (local_board[1] == local_boad[2] == player_marker) and (local_board[0] == '_'):
+            if (local_board[1] == local_board[2] == player_marker) and (local_board[0] == '_'):
                 count += 1
-            if (local_board[4] == local_boad[5] == player_marker) and (local_board[3] == '_'):
+            if (local_board[4] == local_board[5] == player_marker) and (local_board[3] == '_'):
                 count += 1
-            if (local_board[7] == local_boad[8] == player_marker) and (local_board[6] == '_'):
+            if (local_board[7] == local_board[8] == player_marker) and (local_board[6] == '_'):
                 count += 1
 
             #  X_X
-            if (local_board[0] == local_boad[2] == player_marker) and (local_board[1] == '_'):
+            if (local_board[0] == local_board[2] == player_marker) and (local_board[1] == '_'):
                 count += 1
-            if (local_board[3] == local_boad[5] == player_marker) and (local_board[4] == '_'):
+            if (local_board[3] == local_board[5] == player_marker) and (local_board[4] == '_'):
                 count += 1
-            if (local_board[6] == local_boad[8] == player_marker) and (local_board[7] == '_'):
+            if (local_board[6] == local_board[8] == player_marker) and (local_board[7] == '_'):
                 count += 1
 
             #  X
             #  X
             #  _
-            if (local_board[0] == local_boad[3] == player_marker) and (local_board[6] == '_'):
+            if (local_board[0] == local_board[3] == player_marker) and (local_board[6] == '_'):
                 count += 1
-            if (local_board[1] == local_boad[4] == player_marker) and (local_board[7] == '_'):
+            if (local_board[1] == local_board[4] == player_marker) and (local_board[7] == '_'):
                 count += 1
-            if (local_board[2] == local_boad[5] == player_marker) and (local_board[8] == '_'):
+            if (local_board[2] == local_board[5] == player_marker) and (local_board[8] == '_'):
                 count += 1
 
             #  _
             #  X
             #  X
-            if (local_board[3] == local_boad[6] == player_marker) and (local_board[0] == '_'):
+            if (local_board[3] == local_board[6] == player_marker) and (local_board[0] == '_'):
                 count += 1
-            if (local_board[4] == local_boad[7] == player_marker) and (local_board[1] == '_'):
+            if (local_board[4] == local_board[7] == player_marker) and (local_board[1] == '_'):
                 count += 1
-            if (local_board[5] == local_boad[8] == player_marker) and (local_board[2] == '_'):
+            if (local_board[5] == local_board[8] == player_marker) and (local_board[2] == '_'):
                 count += 1
 
             #  X
             #  _
             #  X
-            if (local_board[0] == local_boad[6] == player_marker) and (local_board[3] == '_'):
+            if (local_board[0] == local_board[6] == player_marker) and (local_board[3] == '_'):
                 count += 1
-            if (local_board[1] == local_boad[7] == player_marker) and (local_board[4] == '_'):
+            if (local_board[1] == local_board[7] == player_marker) and (local_board[4] == '_'):
                 count += 1
-            if (local_board[2] == local_boad[8] == player_marker) and (local_board[5] == '_'):
+            if (local_board[2] == local_board[8] == player_marker) and (local_board[5] == '_'):
                 count += 1
 
             #  X__
             #  ___
             #  __X
-            if (local_board[0] == local_boad[8] == player_marker) and (local_board[4] == '_'):
+            if (local_board[0] == local_board[8] == player_marker) and (local_board[4] == '_'):
                 count += 1
 
             #  __X
             #  ___
             #  X__
-            if (local_board[2] == local_boad[6] == player_marker) and (local_board[4] == '_'):
+            if (local_board[2] == local_board[6] == player_marker) and (local_board[4] == '_'):
                 count += 1
 
         return count
