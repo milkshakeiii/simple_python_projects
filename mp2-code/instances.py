@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+uninos = [np.array([[i]]) for i in range(1,61)]
 dominos = [np.array([[i],[i]]) for i in range(1,31)]
 triominos = [np.array([[i,0],[i,i]]) for i in range(1,21)]
 
@@ -52,4 +53,5 @@ board_5x12 = np.ones((5,12))
 board_3x20 = np.ones((3,20))
 empty_chessboard = np.ones((8,8))
 empty_chessboard[3][3] = empty_chessboard[3][4] = empty_chessboard[4][3]  = empty_chessboard[4][4] = 0
-
+empty_chessboard2 = np.ones((8,8))
+empty_chessboard2[0][0] = empty_chessboard2[7][7] = empty_chessboard2[7][6]  = empty_chessboard2[1][0] = 0
