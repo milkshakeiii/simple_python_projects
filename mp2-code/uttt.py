@@ -58,10 +58,120 @@ class ultimateTicTacToe:
         output:
         score(float): estimated utility score for maxPlayer or minPlayer
         """
-        #YOUR CODE HERE
+        if isMax:
+            
+        else:
+            
+        
         score=0
         return score
 
+
+    def count_3_in_a_row(player_marker):
+        count = 0
+        for local_board in range(len(self.board)):
+            #  XXX
+            if (local_board[0] == local_boad[1] == local_board[2] == player_marker):
+                count += 1
+            if (local_board[3] == local_boad[4] == local_board[5] == player_marker):
+                count += 1
+            if (local_board[6] == local_boad[7] == local_board[8] == player_marker):
+                count += 1
+
+            #  X
+            #  X
+            #  X
+            if (local_board[0] == local_boad[3] == local_board[6] == player_marker):
+                count += 1
+            if (local_board[1] == local_boad[4] == local_board[7] == player_marker):
+                count += 1
+            if (local_board[2] == local_boad[5] == local_board[8] == player_marker):
+                count += 1
+
+            #  X__       __X
+            #  _X_  and  _X_
+            #  __X       X__
+            if (local_board[0] == local_boad[4] == local_board[8] == player_marker):
+                count += 1
+            if (local_board[2] == local_boad[4] == local_board[6] == player_marker):
+                count += 1
+
+
+        return count
+
+
+    def count_2_in_a_row(player_marker):
+        count = 0
+        for local_board in range(len(self.board)):
+            #  XX_
+            if (local_board[0] == local_boad[1] == player_marker) and (local_board[2] == '_'):
+                count += 1
+            if (local_board[3] == local_boad[4] == player_marker) and (local_board[5] == '_'):
+                count += 1
+            if (local_board[6] == local_boad[7] == player_marker) and (local_board[8] == '_'):
+                count += 1
+
+            #  _XX
+            if (local_board[1] == local_boad[2] == player_marker) and (local_board[0] == '_'):
+                count += 1
+            if (local_board[4] == local_boad[5] == player_marker) and (local_board[3] == '_'):
+                count += 1
+            if (local_board[7] == local_boad[8] == player_marker) and (local_board[6] == '_'):
+                count += 1
+
+            #  X_X
+            if (local_board[0] == local_boad[2] == player_marker) and (local_board[1] == '_'):
+                count += 1
+            if (local_board[3] == local_boad[5] == player_marker) and (local_board[4] == '_'):
+                count += 1
+            if (local_board[6] == local_boad[8] == player_marker) and (local_board[7] == '_'):
+                count += 1
+
+            #  X
+            #  X
+            #  _
+            if (local_board[0] == local_boad[3] == player_marker) and (local_board[6] == '_'):
+                count += 1
+            if (local_board[1] == local_boad[4] == player_marker) and (local_board[7] == '_'):
+                count += 1
+            if (local_board[2] == local_boad[5] == player_marker) and (local_board[8] == '_'):
+                count += 1
+
+            #  _
+            #  X
+            #  X
+            if (local_board[3] == local_boad[6] == player_marker) and (local_board[0] == '_'):
+                count += 1
+            if (local_board[4] == local_boad[7] == player_marker) and (local_board[1] == '_'):
+                count += 1
+            if (local_board[5] == local_boad[8] == player_marker) and (local_board[2] == '_'):
+                count += 1
+
+            #  X
+            #  _
+            #  X
+            if (local_board[0] == local_boad[6] == player_marker) and (local_board[3] == '_'):
+                count += 1
+            if (local_board[1] == local_boad[7] == player_marker) and (local_board[4] == '_'):
+                count += 1
+            if (local_board[2] == local_boad[8] == player_marker) and (local_board[5] == '_'):
+                count += 1
+
+            #  X__
+            #  ___
+            #  __X
+            if (local_board[0] == local_boad[8] == player_marker) and (local_board[4] == '_'):
+                count += 1
+
+            #  __X
+            #  ___
+            #  X__
+            if (local_board[2] == local_boad[6] == player_marker) and (local_board[4] == '_'):
+                count += 1
+
+        return count
+
+    
 
     def evaluateDesigned(self, isMax):
         """
@@ -84,8 +194,11 @@ class ultimateTicTacToe:
                         on the board.
         """
         #YOUR CODE HERE
-        movesLeft=True
-        return movesLeft
+        for row in self.board:
+            for entry in row:
+                if entry == '_':
+                    return True
+        return False
 
     def checkWinner(self):
         #Return termimnal node status for maximizer player 1-win,0-tie,-1-lose
@@ -156,6 +269,7 @@ class ultimateTicTacToe:
         bestValue=[]
         gameBoards=[]
         winner=0
+        expandedNodes=0
         return gameBoards, bestMove, expandedNodes, bestValue, winner
 
     def playGameYourAgent(self):
