@@ -59,7 +59,12 @@ class ultimateTicTacToe:
         score(float): estimated utility score for maxPlayer or minPlayer
         """
         if isMax:
-            
+            if count_3_in_a_row(self.maxPlayer) > 0:
+                return self.winnerMaxUtility
+            elif count_2_in_a_row(self.maxPlayer) > 0 or count_preventions > 0:
+                return self.twoInARowMaxUtility*count_2_in_a_row(self.maxPlayer) + self.preventThreeInARowMaxUtility*count_prevensions(self.maxPlayer, self.minPlayer)
+            else:
+                
         else:
             
         
@@ -67,9 +72,96 @@ class ultimateTicTacToe:
         return score
 
 
+    def count_corners(player_marker):
+        count = 0
+        for local_board in self.board:
+            if (local_board[0] == player_marker):
+                count += 1
+            if (local_board[2] == player_marker):
+                count += 1
+            if (local_board[6] == player_marker):
+                count += 1
+            if (local_board[8] == player_marker):
+                count += 1
+        return count
+
+
+    def count_preventions(player_marker, enemy_marker):
+        preventions = set()
+        for local_board in self.board:
+            #  XX_
+            if (local_board[0] == local_boad[1] == enemy_marker) and (local_board[2] == player_marker):
+                preventions.add(2)
+            if (local_board[3] == local_boad[4] == enemy_marker) and (local_board[5] == player_marker):
+                preventions.add(5)
+            if (local_board[6] == local_boad[7] == enemy_marker) and (local_board[8] == player_marker):
+                preventions.add(8)
+
+            #  _XX
+            if (local_board[1] == local_boad[2] == enemy_marker) and (local_board[0] == player_marker):
+                preventions.add(0)
+            if (local_board[4] == local_boad[5] == enemy_marker) and (local_board[3] == player_marker):
+                preventions.add(3)
+            if (local_board[7] == local_boad[8] == enemy_marker) and (local_board[6] == player_marker):
+                preventions.add(6)
+
+            #  X_X
+            if (local_board[0] == local_boad[2] == enemy_marker) and (local_board[1] == player_marker):
+                preventions.add(1)
+            if (local_board[3] == local_boad[5] == enemy_marker) and (local_board[4] == player_marker):
+                preventions.add(4)
+            if (local_board[6] == local_boad[8] == enemy_marker) and (local_board[7] == player_marker):
+                preventions.add(7)
+
+            #  X
+            #  X
+            #  _
+            if (local_board[0] == local_boad[3] == enemy_marker) and (local_board[6] == player_marker):
+                preventions.add(6)
+            if (local_board[1] == local_boad[4] == enemy_marker) and (local_board[7] == player_marker):
+                preventions.add(7)
+            if (local_board[2] == local_boad[5] == enemy_marker) and (local_board[8] == player_marker):
+                preventions.add(8)
+
+            #  _
+            #  X
+            #  X
+            if (local_board[3] == local_boad[6] == player_marker) and (local_board[0] == player_marker):
+                preventions.add(0)
+            if (local_board[4] == local_boad[7] == player_marker) and (local_board[1] == player_marker):
+                preventions.add(1)
+            if (local_board[5] == local_boad[8] == player_marker) and (local_board[2] == player_marker):
+                preventions.add(2)
+
+            #  X
+            #  _
+            #  X
+            if (local_board[0] == local_boad[6] == enemy_marker) and (local_board[3] == player_marker):
+                preventions.add(3)
+            if (local_board[1] == local_boad[7] == enemy_marker) and (local_board[4] == player_marker):
+                preventions.add(4)
+            if (local_board[2] == local_boad[8] == enemy_marker) and (local_board[5] == player_marker):
+                preventions.add(5)
+
+            #  X__
+            #  ___
+            #  __X
+            if (local_board[0] == local_boad[8] == enemy_marker) and (local_board[4] == player_marker):
+                preventions.add(4)
+
+            #  __X
+            #  ___
+            #  X__
+            if (local_board[2] == local_boad[6] == enemy_marker) and (local_board[4] == player_marker):
+                preventions.add(4)
+
+        return len(preventions)
+            
+
+
     def count_3_in_a_row(player_marker):
         count = 0
-        for local_board in range(len(self.board)):
+        for local_board in self.board:
             #  XXX
             if (local_board[0] == local_boad[1] == local_board[2] == player_marker):
                 count += 1
@@ -102,7 +194,7 @@ class ultimateTicTacToe:
 
     def count_2_in_a_row(player_marker):
         count = 0
-        for local_board in range(len(self.board)):
+        for local_board in self.board:
             #  XX_
             if (local_board[0] == local_boad[1] == player_marker) and (local_board[2] == '_'):
                 count += 1
