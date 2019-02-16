@@ -142,7 +142,7 @@ class ultimateTicTacToe:
         self.expandedNodes += 1
         
         if depth == 0 or not self.checkMovesLeft or self.checkWinner() != 0:
-            return self.evaluatePredefined(isMax)
+            return self.evaluatePredifined(isMax)
 
         if self.currPlayer:
             value = float('-inf')
@@ -199,7 +199,7 @@ class ultimateTicTacToe:
             for i in range(len(self.board[currBoardIdx])):
                 marker = self.board[currBoardIdx][i]
                 if marker == '_':
-                    self.board[currBoardIdx][i] = self.maxPlayer
+                    self.board[currBoardIdx][i] = self.maxPlayer if currIsMax else self.minPlayer
                     self.currPlayer = False
                     if (currIsMax and isMinimaxOffensive) or (not currIsMax and isMinimaxDefensive):
                         evaluation = self.minimax(3, i, currIsMax)
@@ -208,19 +208,25 @@ class ultimateTicTacToe:
                     move_evaluations.append((i, evaluation))
                     self.board[currBoardIdx][i] = '_'
 
-            print(move_evaluations)
-            best_move = max(move_evaluations, key= lambda eval: eval[1])
+            if currIsMax:
+                best_move = max(move_evaluations, key= lambda eval: eval[1])
+            else:
+                best_move = min(move_evaluations, key= lambda eval: eval[1])
 
             bestMoves.append((currBoardIdx, best_move[0]))
             gameBoards.append(copy.deepcopy(self.board))
             expandedNodes.append(self.expandedNodes)
             bestValues.append(best_move[1])
 
-            self.board[currBoardIdx][best_move[0]] = self.maxPlayer if currIsMax else self.minPlayer
+            self.board[currBoardIdx][best_move[0]] = (self.maxPlayer if currIsMax else self.minPlayer)
             currIsMax = not currIsMax
             currBoardIdx = best_move[0]
 
+            printGameBoard(self.board)
+            print("- - -")
+
         winner = self.checkWinner()
+        gameBoards.append(copy.deepcopy(self.board))
         
         return gameBoards, bestMoves, self.expandedNodes, bestValues, winner
 
@@ -452,7 +458,7 @@ def printGameBoard(board):
         This function prints the current game board.
         """
         for k in [0, 3, 6]:
-            for l in range(3):
+            for l in [0, 3, 6]:
                 for i in range(3):
                     for j in range(3):
                         print(board[k+i][l+j], end='')
