@@ -121,7 +121,7 @@ class ultimateTicTacToe:
         output:
         bestValue(float):the bestValue that current player may have
         """
-        return general_alphabeta(depth, currBoardIdx, alpha, beta, isMax, minIsDesigned)
+        return self.general_alphabeta(depth, currBoardIdx, alpha, beta, isMax, False)
 
     def general_alphabeta(self,depth,currBoardIdx,alpha,beta,isMax,minIsDesigned):
         """
@@ -153,9 +153,12 @@ class ultimateTicTacToe:
                 if marker == '_':
                     self.board[currBoardIdx][i] = self.maxPlayer
                     self.currPlayer = False
-                    new_value = self.minimax(depth-1, i, isMax)
+                    new_value = self.general_alphabeta(depth-1, i, alpha, beta, isMax, minIsDesigned)
                     value = max(value, new_value)
+                    alpha = max(alpha, value)
                     self.board[currBoardIdx][i] = '_'
+                    if (alpha >= beta):
+                        break
             return value
         else:
             value = float('inf')
@@ -164,9 +167,12 @@ class ultimateTicTacToe:
                 if marker == '_':
                     self.board[currBoardIdx][i] = self.minPlayer
                     self.currPlayer = True
-                    new_value = self.minimax(depth-1, i, isMax)
+                    new_value = self.general_alphabeta(depth-1, i, alpha, beta, isMax, minIsDesigned)
                     value = min(value, new_value)
+                    beta = min(beta, value)
                     self.board[currBoardIdx][i] = '_'
+                    if (alpha >= beta):
+                        break
             return value
 
         return bestValue
@@ -187,7 +193,7 @@ class ultimateTicTacToe:
         """
         self.expandedNodes += 1
         
-        if depth == 0 or not self.checkMovesLeft or self.checkWinner() != 0:
+        if depth == 0 or not self.checkMovesLeft() or self.checkWinner() != 0:
             return self.evaluatePredifined(isMax)
 
         if self.currPlayer:
@@ -253,24 +259,24 @@ class ultimateTicTacToe:
                     if (currIsMax and isMinimaxMax) or (not currIsMax and isMinimaxMin):
                         evaluation = self.minimax(3, i, currIsMax)
                     else:
-                        evaluation = self.general_alphabeta(3, i, 0, 0, currIsMax, minIsDesigned)
-                    move_evaluations.append((i, evaluation))
+                        evaluation = self.general_alphabeta(3, i, float('-inf'), float('inf'), currIsMax, minIsDesigned)
+                    move_evaluations.append((evaluation, i))
                     
                     self.board[currBoardIdx][i] = '_'
 
             if currIsMax:
-                best_move = max(move_evaluations, key= lambda eval: eval[1])
+                best_move = max(move_evaluations, key=lambda eval: (eval[0], -eval[1]))
             else:
-                best_move = min(move_evaluations, key= lambda eval: eval[1])
+                best_move = min(move_evaluations)
 
-            bestMoves.append((currBoardIdx, best_move[0]))
+            bestMoves.append((currBoardIdx, best_move[1]))
             gameBoards.append(copy.deepcopy(self.board))
             expandedNodes.append(self.expandedNodes)
-            bestValues.append(best_move[1])
+            bestValues.append(best_move[0])
 
-            self.board[currBoardIdx][best_move[0]] = (self.maxPlayer if currIsMax else self.minPlayer)
+            self.board[currBoardIdx][best_move[1]] = (self.maxPlayer if currIsMax else self.minPlayer)
             currIsMax = not currIsMax
-            currBoardIdx = best_move[0]
+            currBoardIdx = best_move[1]
 
             #printGameBoard(self.board)
             #print("- - -")
