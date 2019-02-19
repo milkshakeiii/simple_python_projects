@@ -136,7 +136,7 @@ class ultimateTicTacToe:
         output:
         bestValue(float):the bestValue that current player may have
         """
-        self.expandedNodes += 1
+        
         
         if depth == 0 or not self.checkMovesLeft or self.checkWinner() != 0:
             if isMax:
@@ -145,6 +145,8 @@ class ultimateTicTacToe:
                 return self.evaluatePredifined(False)
             else:
                 return self.evaluateDesigned(False)
+
+        self.expandedNodes += 1
 
         if self.currPlayer:
             value = float('-inf')
@@ -401,6 +403,18 @@ class ultimateTicTacToe:
             #  X__
             if (local_board[2] == local_board[6] == enemy_marker) and (local_board[4] == player_marker):
                 preventions.add(4)
+
+            #  X
+            #  _X
+            #  ___
+            if (local_board[2] == local_board[4] == enemy_marker) and (local_board[6] == player_marker):
+                preventions.add(6)
+            if (local_board[6] == local_board[4] == enemy_marker) and (local_board[2] == player_marker):
+                preventions.add(2)
+            if (local_board[0] == local_board[4] == enemy_marker) and (local_board[8] == player_marker):
+                preventions.add(8)
+            if (local_board[8] == local_board[4] == enemy_marker) and (local_board[0] == player_marker):
+                preventions.add(0)
 
         return len(preventions)
             
