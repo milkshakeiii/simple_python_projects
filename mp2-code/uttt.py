@@ -243,7 +243,7 @@ class ultimateTicTacToe:
         bestMoves=[]
         bestValues=[]
         gameBoards=[]
-        expandedNodes=[]
+        expandedNodesList=[]
         winner=0
 
         currIsMax = maxFirst
@@ -271,7 +271,7 @@ class ultimateTicTacToe:
 
             bestMoves.append((currBoardIdx, best_move[1]))
             gameBoards.append(copy.deepcopy(self.board))
-            expandedNodes.append(self.expandedNodes)
+            expandedNodesList.append(self.expandedNodes)
             bestValues.append(best_move[0])
 
             self.board[currBoardIdx][best_move[1]] = (self.maxPlayer if currIsMax else self.minPlayer)
@@ -284,7 +284,7 @@ class ultimateTicTacToe:
         winner = self.checkWinner()
         gameBoards.append(copy.deepcopy(self.board))
         
-        return gameBoards, bestMoves, self.expandedNodes, bestValues, winner
+        return gameBoards, bestMoves, expandedNodesList, bestValues, winner
 
     def playGameYourAgent(self):
         """
@@ -508,6 +508,18 @@ class ultimateTicTacToe:
             if (local_board[2] == local_board[6] == player_marker) and (local_board[4] == '_'):
                 count += 1
 
+            #  X
+            #  _X
+            #  ___
+            if (local_board[2] == local_board[4] == player_marker) and (local_board[6] == '_'):
+                count += 1
+            if (local_board[6] == local_board[4] == player_marker) and (local_board[2] == '_'):
+                count += 1
+            if (local_board[0] == local_board[4] == player_marker) and (local_board[8] == '_'):
+                count += 1
+            if (local_board[8] == local_board[4] == player_marker) and (local_board[0] == '_'):
+                count += 1
+
         return count
 
     def printGameBoard(self):
@@ -543,11 +555,11 @@ if __name__=="__main__":
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(True,True,False)
     print("Max (minimax) vs Min (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
-    
+
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(True,False,False)
     print("Max (alphabeta) vs Min (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
-
+'''
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(False,True,False)
     print("Min (alphabeta) vs Max (minimax).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
@@ -559,3 +571,4 @@ if __name__=="__main__":
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(False,False,False)
     print("Min (alphabeta) vs Max (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+'''
