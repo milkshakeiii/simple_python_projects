@@ -377,7 +377,7 @@ class ultimateTicTacToe:
                         
                         self.board[currBoardIdx][i] = '_'
 
-                best_move = max(move_evaluations, key=lambda eval: (eval[0], -eval[1]))
+                best_move = min(move_evaluations, key=lambda eval: (eval[0], -eval[1]))
             else:
                 square = int(input())
                 best_move = (0, square)
