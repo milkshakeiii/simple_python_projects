@@ -297,13 +297,12 @@ class ultimateTicTacToe:
         gameBoards(list of 2d lists): list of game board positions at each move
         winner(int): 1 for maxPlayer is the winner, -1 for minPlayer is the winner, and 0 for tie.
         """
-        gameBoards,
-        bestMoves,
-        self.expandedNodes,
-        bestValues,
-        winner = self.generalPlayGame(maxFirst, startingBoard, False, False, True)
+        maxFirst = randint(0, 1)
+        startingBoard = randint(0, 8)
         
-        return gameBoards, bestMove, winner
+        gameBoards, bestMoves, self.expandedNodes, bestValues, winner = self.generalPlayGame(maxFirst, startingBoard, False, False, True)
+        
+        return gameBoards, bestMoves, winner
 
 
     def playGameHuman(self):
@@ -573,7 +572,7 @@ if __name__=="__main__":
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(True,False,False)
     print("Max (alphabeta) vs Min (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
-'''
+
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(False,True,False)
     print("Min (alphabeta) vs Max (minimax).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
@@ -585,4 +584,8 @@ if __name__=="__main__":
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(False,False,False)
     print("Min (alphabeta) vs Max (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
-'''
+
+    for i in range(20):
+        uttt=ultimateTicTacToe()
+        gameBoards, bestMove, winner=uttt.playGameYourAgent()
+        print("MyHeuristic vs. Offensvie  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")        
