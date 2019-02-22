@@ -112,14 +112,14 @@ class ultimateTicTacToe:
             value += self.count_3_in_a_row(self.maxPlayer) * 5000
             value += self.count_2_in_a_row(self.maxPlayer) * 100
             value -= self.count_3_in_a_row(self.minPlayer) * 2500
-            value -= self.count_2_in_a_row(self.minPlayer) * 100
+            value -= self.count_2_in_a_row(self.minPlayer) * 50
             return value
         else:
             value = 0
             value += self.count_3_in_a_row(self.maxPlayer) * 5000
             value += self.count_2_in_a_row(self.maxPlayer) * 100
             value -= self.count_3_in_a_row(self.minPlayer) * 2500
-            value -= self.count_2_in_a_row(self.minPlayer) * 100
+            value -= self.count_2_in_a_row(self.minPlayer) * 50
             return value
         
     def checkMovesLeft(self):
@@ -285,6 +285,43 @@ class ultimateTicTacToe:
 
         return bestValue
 
+    def extracredit_alphabeta(self,depth,currBoardIdx,alpha,beta,isMax):
+
+        self.expandedNodes += 1
+
+        if depth == 1 or not self.checkMovesLeft() or self.checkExtraCreditWinner() != 0:
+            if isMax:
+                return self.evaluateExtraCredit(True)
+            else:
+                return self.evaluateExtraCredit(False)
+
+        if self.currPlayer:
+            value = float('-inf')
+            for move in self.getECLegalMoves(currBoardIdx):
+                self.board[move[0]][move[1]] = self.maxPlayer
+                self.currPlayer = False
+                new_value = self.extracredit_alphabeta(depth-1, move[2], alpha, beta, isMax)
+                value = max(value, new_value)
+                alpha = max(alpha, value)
+                self.board[move[0]][move[1]] = '_'
+                if (alpha >= beta):
+                    break
+            return value
+        else:
+            value = float('inf')
+            for move in self.getECLegalMoves(currBoardIdx):
+                self.board[move[0]][move[1]] = self.minPlayer
+                self.currPlayer = True
+                new_value = self.extracredit_alphabeta(depth-1, move[2], alpha, beta, isMax)
+                value = min(value, new_value)
+                beta = min(beta, value)
+                self.board[move[0]][move[1]] = '_'
+                if (alpha >= beta):
+                    break
+            return value
+
+        return bestValue
+
     #based off pseudocode from wikipedia
     def minimax(self, depth, currBoardIdx, isMax):
         """
@@ -428,35 +465,14 @@ class ultimateTicTacToe:
             print("before")
             printGameBoard(self.board)
 
-            if self.checkLocalWinner(currBoardIdx) == 0:
-                print("restricted move?")
-                for i in range(9):
-                    offset = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)][i]
-                    idx = self.globalIdx[currBoardIdx]
-                    move_coord = (idx[0] + offset[0], idx[1] + offset[1])
-                    marker = self.board[move_coord[0]][move_coord[1]]
-                    if marker == '_':
-                        self.board[move_coord[0]][move_coord[1]] = self.maxPlayer if currIsMax else self.minPlayer
-                        self.currPlayer = not currIsMax
-                        evaluation = self.general_alphabeta(3, i, float('-inf'), float('inf'), currIsMax, False, extra_credit = True)
-                        move_evaluations.append((evaluation, i, move_coord))                        
-                        self.board[move_coord[0]][move_coord[1]] = '_'
-            if len(move_evaluations) == 0:
-                print("unrestricted move")
-                for boardno in range(9):
-                    if self.checkLocalWinner(boardno) != 0:
-                            continue
-                    for i in range(9):
-                        offset = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)][i]
-                        idx = self.globalIdx[boardno]
-                        move_coord = (idx[0] + offset[0], idx[1] + offset[1])
-                        marker = self.board[move_coord[0]][move_coord[1]]
-                        if marker == '_':
-                            self.board[move_coord[0]][move_coord[1]] = self.maxPlayer if currIsMax else self.minPlayer
-                            self.currPlayer = not currIsMax
-                            evaluation = self.general_alphabeta(3, i, float('-inf'), float('inf'), currIsMax, False, extra_credit = True)
-                            move_evaluations.append((evaluation, i, move_coord))
-                            self.board[move_coord[0]][move_coord[1]] = '_'
+            move_evaluations = []
+            legal_moves = self.getECLegalMoves(currBoardIdx)
+            for move_coord in legal_moves:
+                self.currPlayer = not currIsMax
+                self.board[move_coord[0]][move_coord[1]] = self.maxPlayer if currIsMax else self.minPlayer
+                evaluation = self.extracredit_alphabeta(3, move_coord[2], float('-inf'), float('inf'), currIsMax)
+                move_evaluations.append((evaluation, move_coord[2], move_coord))
+                self.board[move_coord[0]][move_coord[1]] = '_'
 
             if currIsMax:
                 best_move = max(move_evaluations, key=lambda eval: (eval[0], -eval[1]))
@@ -479,7 +495,31 @@ class ultimateTicTacToe:
         gameBoards.append(copy.deepcopy(self.board))
         
         return gameBoards, bestMoves, expandedNodesList, bestValues, winner
-    
+
+    def getECLegalMoves(self, currBoardIdx):
+        legal_moves = []
+                                         
+        if self.checkLocalWinner(currBoardIdx) == 0:
+            for i in range(9):
+                offset = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)][i]
+                idx = self.globalIdx[currBoardIdx]
+                move_coord = (idx[0] + offset[0], idx[1] + offset[1])
+                marker = self.board[move_coord[0]][move_coord[1]]
+                if marker == '_':
+                    legal_moves.append((move_coord[0], move_coord[1], i))
+        if len(legal_moves) == 0:
+            for boardno in range(9):
+                if self.checkLocalWinner(boardno) != 0:
+                        continue
+                for i in range(9):
+                    offset = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)][i]
+                    idx = self.globalIdx[boardno]
+                    move_coord = (idx[0] + offset[0], idx[1] + offset[1])
+                    marker = self.board[move_coord[0]][move_coord[1]]
+                    if marker == '_':
+                        legal_moves.append((move_coord[0], move_coord[1], i))
+
+        return legal_moves
 
     def playGameYourAgent(self):
         """
