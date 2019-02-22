@@ -462,11 +462,12 @@ class ultimateTicTacToe:
             self.expandedNodes = 0
             move_evaluations = []
 
-            print("before")
-            printGameBoard(self.board)
-
             move_evaluations = []
             legal_moves = self.getECLegalMoves(currBoardIdx)
+
+            if len(legal_moves) == 0:
+                break
+            
             for move_coord in legal_moves:
                 self.currPlayer = not currIsMax
                 self.board[move_coord[0]][move_coord[1]] = self.maxPlayer if currIsMax else self.minPlayer
@@ -491,7 +492,7 @@ class ultimateTicTacToe:
             #printGameBoard(self.my_board)
             #print("- - -")
 
-        winner = self.checkWinner()
+        winner = self.checkExtraCreditWinner()
         gameBoards.append(copy.deepcopy(self.board))
         
         return gameBoards, bestMoves, expandedNodesList, bestValues, winner
@@ -926,20 +927,47 @@ if __name__=="__main__":
         gameBoards, bestMove, winner=uttt.playGameYourAgent()
         print("MyHeuristic vs. Offensive.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
         printGameBoard(gameBoards[-1])
-    
+''' 
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, winner=uttt.playGameHuman()
     print("Human vs. designed.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
     
-    '''
+'''
+    uttt=ultimateTicTacToe()
+    gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(False, 5)
+    printGameBoard(gameBoards[-1])
+    print(expandedNodes)
+    print("EC: Min first, starting board 5.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+
+    uttt=ultimateTicTacToe()
+    gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(False, 8)
+    printGameBoard(gameBoards[-1])
+    print(expandedNodes)
+    print("EC: Min first, starting board 8.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+
+    uttt=ultimateTicTacToe()
+    gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(True, 5)
+    printGameBoard(gameBoards[-1])
+    print(expandedNodes)
+    print("EC: Max first, starting board 5.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+
+    uttt=ultimateTicTacToe()
+    gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(True, 8)
+    printGameBoard(gameBoards[-1])
+    print(expandedNodes)
+    print("EC: Max first, starting board 8.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+
+
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(True, 4)
     printGameBoard(gameBoards[-1])
     print(expandedNodes)
-    print("EC: Min (alphabeta) vs Max (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+    print("EC: Max first, starting board 4.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+
 
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(False, 4)
     printGameBoard(gameBoards[-1])
     print(expandedNodes)
-    print("EC: Max (alphabeta) vs Min (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+    print("EC: Min first, starting board 4.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
+'''
