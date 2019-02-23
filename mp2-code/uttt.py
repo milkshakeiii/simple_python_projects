@@ -487,11 +487,11 @@ class ultimateTicTacToe:
                 print(move_evaluations)
 
             bestMoves.append((currBoardIdx, best_move[2]))
-            gameBoards.append(copy.deepcopy(self.board))
             expandedNodesList.append(self.expandedNodes)
             bestValues.append(best_move[0])
 
             self.board[best_move[2][0]][best_move[2][1]] = (self.maxPlayer if currIsMax else self.minPlayer)
+            gameBoards.append(copy.deepcopy(self.board))
             currIsMax = not currIsMax
             currBoardIdx = best_move[1]
 
@@ -499,7 +499,6 @@ class ultimateTicTacToe:
             #print("- - -")
 
         winner = self.checkWinner()
-        gameBoards.append(copy.deepcopy(self.board))
         
         return gameBoards, bestMoves, expandedNodesList, bestValues, winner
 
@@ -937,7 +936,7 @@ def printGameBoard(board):
 
 
 if __name__=="__main__":
-    ''' 
+
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(True,True,True)
     printGameBoard(gameBoards[-1])
@@ -978,7 +977,7 @@ if __name__=="__main__":
     print(expandedNodes)
     print("Min (alphabeta) vs Max (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
 
-    for i in range(1):
+    for i in range(20):
         uttt=ultimateTicTacToe()
         gameBoards, bestMove, winner=uttt.playGameYourAgent()
         print("MyHeuristic vs. Offensive.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
@@ -987,7 +986,6 @@ if __name__=="__main__":
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, winner=uttt.playGameHuman()
     print("Human vs. designed.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
-'''    
 
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(False, 5)
@@ -1019,7 +1017,6 @@ if __name__=="__main__":
     printGameBoard(gameBoards[-1])
     print(expandedNodes)
     print("EC: Max first, starting board 4.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
-
 
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(False, 4)
