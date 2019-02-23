@@ -1,7 +1,8 @@
 from time import sleep
 from math import inf
 from random import randint
-import copy
+from collections import Counter
+import copy, cProfile
 
 class ultimateTicTacToe:
     def __init__(self):
@@ -38,6 +39,11 @@ class ultimateTicTacToe:
         self.preventThreeInARowMinUtility=-500
         self.cornerMinUtility=-30
 
+        self.winnerMyUtility=-10000
+        self.twoInARowMyUtility=-500
+        self.cornerMyUtility=-30
+        self.preventThreeInARowMyUtility=-100
+	
         self.expandedNodes=0
         self.currPlayer=True
 
@@ -70,6 +76,56 @@ class ultimateTicTacToe:
         return self.checkWinner()
 
     def evaluateDesigned(self, isMax, currBoardIdx):
+        """
+        This function implements the evaluation function for ultimate tic tac toe for your own agent.
+        input args:
+        isMax(bool): boolean variable indicates whether it's maxPlayer or minPlayer.
+                                 True for maxPlayer, False for minPlayer
+        output:
+        score(float): estimated utility score for maxPlayer or minPlayer
+        """
+        # possible 3-in-row locations
+        winList = {(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)}
+        score = 0
+        for bId in self.globalIdx:
+                num3InRow = 0
+                num2InRow = 0
+                numPrevent = 0
+                numCorner = 0
+                for w in winList:
+                        outcomes = [self.board[bId[0]+(w[i]//3)][bId[1]+(w[i]%3)] for i in range(3)]
+                        nums = Counter(outcomes)
+                        if nums['O'] == 3 or nums['X'] == 3:
+                                num3InRow += 1
+                                if nums['O'] == 3:
+                                        score += self.winnerMyUtility
+                                else:
+                                        score += -self.winnerMyUtility
+                                break
+                        elif nums['O'] == 2 and nums['_'] == 1:
+                                num2InRow += 1
+                        elif nums['X'] == 2 and nums['O'] == 1:
+                                numPrevent += 1
+
+                if not num3InRow:
+                        if num2InRow or numPrevent:
+                                score += num2InRow*self.twoInARowMyUtility + numPrevent*self.preventThreeInARowMyUtility
+
+                        else:
+                                if self.board[bId[0]][bId[1]] == 'O':
+                                        numCorner += 1
+                                if self.board[bId[0]][bId[1]+2] == 'O':
+                                        numCorner += 1
+                                if self.board[bId[0]+2][bId[1]] == 'O':
+                                        numCorner += 1
+                                if self.board[bId[0]+2][bId[1]+2] == 'O':
+                                        numCorner += 1
+
+                                score += numCorner*self.cornerMyUtility
+        return score
+        
+
+    def evaluateDesignedMCTS(self, isMax, currBoardIdx):
         """
         This function implements the evaluation function for ultimate tic tac toe for your own agent.
         input args:
@@ -881,7 +937,7 @@ def printGameBoard(board):
 
 
 if __name__=="__main__":
-    '''
+    ''' 
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(True,True,True)
     printGameBoard(gameBoards[-1])
@@ -921,18 +977,18 @@ if __name__=="__main__":
     printGameBoard(gameBoards[-1])
     print(expandedNodes)
     print("Min (alphabeta) vs Max (alphabeta).  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
-    
-    for i in range(20):
+
+    for i in range(1):
         uttt=ultimateTicTacToe()
         gameBoards, bestMove, winner=uttt.playGameYourAgent()
         print("MyHeuristic vs. Offensive.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
         printGameBoard(gameBoards[-1])
-''' 
+'''
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, winner=uttt.playGameHuman()
     print("Human vs. designed.  Winner: " + str(winner) + " in " + str(len(bestMove)) + " turns.")
-    
-'''
+'''    
+
     uttt=ultimateTicTacToe()
     gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playExtraCreditGame(False, 5)
     printGameBoard(gameBoards[-1])
