@@ -298,7 +298,7 @@ class ultimateTicTacToe:
         """
         self.expandedNodes += 1
 
-        if depth == 1 or not self.checkMovesLeft() or self.checkWinner() != 0 or not self.checkLocalMoveLeft(currBoardIdx):
+        if depth >= 3 or not self.checkMovesLeft() or self.checkWinner() != 0 or not self.checkLocalMoveLeft(currBoardIdx):
             if isMax:
                 return self.evaluatePredifined(True)
             elif not minIsDesigned:
@@ -315,7 +315,7 @@ class ultimateTicTacToe:
                 if marker == '_':
                     self.board[idx[0] + offset[0]][idx[1] + offset[1]] = self.maxPlayer
                     self.currPlayer = False
-                    new_value = self.general_alphabeta(depth-1, i, alpha, beta, isMax, minIsDesigned)
+                    new_value = self.general_alphabeta(depth+1, i, alpha, beta, isMax, minIsDesigned)
                     value = max(value, new_value)
                     alpha = max(alpha, value)
                     self.board[idx[0] + offset[0]][idx[1] + offset[1]] = '_'
@@ -331,7 +331,7 @@ class ultimateTicTacToe:
                 if marker == '_':
                     self.board[idx[0] + offset[0]][idx[1] + offset[1]] = self.minPlayer
                     self.currPlayer = True
-                    new_value = self.general_alphabeta(depth-1, i, alpha, beta, isMax, minIsDesigned)
+                    new_value = self.general_alphabeta(depth+1, i, alpha, beta, isMax, minIsDesigned)
                     value = min(value, new_value)
                     beta = min(beta, value)
                     self.board[idx[0] + offset[0]][idx[1] + offset[1]] = '_'
@@ -345,7 +345,7 @@ class ultimateTicTacToe:
 
         self.expandedNodes += 1
 
-        if depth == 1 or not self.checkMovesLeft() or self.checkExtraCreditWinner() != 0:
+        if depth >= 3 or not self.checkMovesLeft() or self.checkExtraCreditWinner() != 0:
             if isMax:
                 return self.evaluateExtraCredit(True)
             else:
@@ -356,7 +356,7 @@ class ultimateTicTacToe:
             for move in self.getECLegalMoves(currBoardIdx):
                 self.board[move[0]][move[1]] = self.maxPlayer
                 self.currPlayer = False
-                new_value = self.extracredit_alphabeta(depth-1, move[2], alpha, beta, isMax)
+                new_value = self.extracredit_alphabeta(depth+1, move[2], alpha, beta, isMax)
                 value = max(value, new_value)
                 alpha = max(alpha, value)
                 self.board[move[0]][move[1]] = '_'
@@ -368,7 +368,7 @@ class ultimateTicTacToe:
             for move in self.getECLegalMoves(currBoardIdx):
                 self.board[move[0]][move[1]] = self.minPlayer
                 self.currPlayer = True
-                new_value = self.extracredit_alphabeta(depth-1, move[2], alpha, beta, isMax)
+                new_value = self.extracredit_alphabeta(depth+1, move[2], alpha, beta, isMax)
                 value = min(value, new_value)
                 beta = min(beta, value)
                 self.board[move[0]][move[1]] = '_'
@@ -394,7 +394,7 @@ class ultimateTicTacToe:
         """
         self.expandedNodes += 1
         
-        if depth == 1 or not self.checkMovesLeft() or self.checkWinner() != 0 or not self.checkLocalMoveLeft(currBoardIdx):
+        if depth >= 3 or not self.checkMovesLeft() or self.checkWinner() != 0 or not self.checkLocalMoveLeft(currBoardIdx):
             return self.evaluatePredifined(isMax)
 
         if self.currPlayer:
@@ -406,7 +406,7 @@ class ultimateTicTacToe:
                 if marker == '_':
                     self.board[idx[0] + offset[0]][idx[1] + offset[1]] = self.maxPlayer
                     self.currPlayer = False
-                    new_value = self.minimax(depth-1, i, isMax)
+                    new_value = self.minimax(depth+1, i, isMax)
                     value = max(value, new_value)
                     self.board[idx[0] + offset[0]][idx[1] + offset[1]] = '_'
             return value
@@ -419,7 +419,7 @@ class ultimateTicTacToe:
                 if marker == '_':
                     self.board[idx[0] + offset[0]][idx[1] + offset[1]] = self.minPlayer
                     self.currPlayer = True
-                    new_value = self.minimax(depth-1, i, isMax)
+                    new_value = self.minimax(depth+1, i, isMax)
                     value = min(value, new_value)
                     self.board[idx[0] + offset[0]][idx[1] + offset[1]] = '_'
             return value
@@ -470,9 +470,9 @@ class ultimateTicTacToe:
                     self.board[move_coord[0]][move_coord[1]] = self.maxPlayer if currIsMax else self.minPlayer
                     self.currPlayer = not currIsMax
                     if (currIsMax and isMinimaxMax) or (not currIsMax and isMinimaxMin):
-                        evaluation = self.minimax(3, i, currIsMax)
+                        evaluation = self.minimax(1, i, currIsMax)
                     else:
-                        evaluation = self.general_alphabeta(3, i, float('-inf'), float('inf'), currIsMax, minIsDesigned)
+                        evaluation = self.general_alphabeta(1, i, float('-inf'), float('inf'), currIsMax, minIsDesigned)
                     move_evaluations.append((evaluation, i, move_coord))
                     
                     self.board[move_coord[0]][move_coord[1]] = '_'
@@ -526,7 +526,7 @@ class ultimateTicTacToe:
             for move_coord in legal_moves:
                 self.currPlayer = not currIsMax
                 self.board[move_coord[0]][move_coord[1]] = self.maxPlayer if currIsMax else self.minPlayer
-                evaluation = self.extracredit_alphabeta(3, move_coord[2], float('-inf'), float('inf'), currIsMax)
+                evaluation = self.extracredit_alphabeta(1, move_coord[2], float('-inf'), float('inf'), currIsMax)
                 move_evaluations.append((evaluation, move_coord[2], move_coord))
                 self.board[move_coord[0]][move_coord[1]] = '_'
 
@@ -632,7 +632,7 @@ class ultimateTicTacToe:
                     if marker == '_':
                         self.board[move_coord[0]][move_coord[1]] = self.minPlayer
                         self.currPlayer = not currIsPlayer
-                        evaluation = self.general_alphabeta(3, i, float('-inf'), float('inf'), False, True)
+                        evaluation = self.general_alphabeta(1, i, float('-inf'), float('inf'), False, True)
                         move_evaluations.append((evaluation, i, move_coord))
                         
                         self.board[move_coord[0]][move_coord[1]] = '_'
