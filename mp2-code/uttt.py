@@ -75,6 +75,7 @@ class ultimateTicTacToe:
     def evaluateDesignedSimple(self, isMax, currBoardIdx):
         return self.checkWinner()
 
+    #this method by Ayush
     def evaluateDesigned(self, isMax, currBoardIdx):
         """
         This function implements the evaluation function for ultimate tic tac toe for your own agent.
@@ -486,7 +487,7 @@ class ultimateTicTacToe:
                 print("Move evaluations:")
                 print(move_evaluations)
 
-            bestMoves.append((currBoardIdx, best_move[2]))
+            bestMoves.append(best_move[2])
             expandedNodesList.append(self.expandedNodes)
             bestValues.append(best_move[0])
 
@@ -499,7 +500,7 @@ class ultimateTicTacToe:
             #print("- - -")
 
         winner = self.checkWinner()
-        
+
         return gameBoards, bestMoves, expandedNodesList, bestValues, winner
 
 
@@ -535,7 +536,7 @@ class ultimateTicTacToe:
             else:
                 best_move = min(move_evaluations)
 
-            bestMoves.append((currBoardIdx, best_move[2]))
+            bestMoves.append(best_move[2])
             gameBoards.append(copy.deepcopy(self.board))
             expandedNodesList.append(self.expandedNodes)
             bestValues.append(best_move[0])
@@ -549,8 +550,8 @@ class ultimateTicTacToe:
 
         winner = self.checkExtraCreditWinner()
         gameBoards.append(copy.deepcopy(self.board))
-        
-        return gameBoards, bestMoves, expandedNodesList, bestValues, winner
+
+        return gameBoards[1:], bestMoves, expandedNodesList, bestValues, winner
 
     def getECLegalMoves(self, currBoardIdx):
         legal_moves = []
@@ -645,7 +646,7 @@ class ultimateTicTacToe:
                 move_coord = (idx[0] + offset[0], idx[1] + offset[1])
                 best_move = (0, i, move_coord)
 
-            bestMoves.append((currBoardIdx, best_move[2]))
+            bestMoves.append(best_move[2])
             gameBoards.append(copy.deepcopy(self.board))
             expandedNodesList.append(self.expandedNodes)
             bestValues.append(best_move[0])
