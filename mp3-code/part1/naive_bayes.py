@@ -36,7 +36,17 @@ class NaiveBayes(object):
             train_label(numpy.ndarray): training labels with a dimension of (# of examples, )
         """
 
-        # YOUR CODE HERE
+        k = 0.1
+
+        class_counts = {}
+
+        for i in range(len(train_label)):
+            label = train_label[i]
+            class_counts[label] = class_counts.get(label, 0) + 1
+
+        print(class_counts)
+        print(len(train_label))
+        
         pass
 
     def test(self,test_set,test_label):
