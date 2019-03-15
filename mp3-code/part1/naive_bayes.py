@@ -1,3 +1,4 @@
+import math
 import numpy as np
 
 class NaiveBayes(object):
@@ -38,7 +39,9 @@ class NaiveBayes(object):
 
         k = 0.1
         training_count = len(train_label)
-        pixel_count = len(train_set[0])
+        pixel_count = self.feature_dim
+        shade_count = self.num_value
+        class_count = self.num_class
 
         class_counts = {} #index: class num
         pixel_counts = {} #index: (pixelnum, shade, classnum)
@@ -50,18 +53,21 @@ class NaiveBayes(object):
             image = train_set[i]
             for j in range(len(image)):
                 shade = image[j]
-                index = (j, shade, i)
+                index = (j, shade, label)
                 pixel_counts[index] = pixel_counts.get(index, 0) + 1
 
         for i in class_counts.keys():
             self.prior[i] = math.log(class_counts[i]/training_count)
 
-        for i in pixel_counts.keys():
-            pixelnum = i[0]
-            shade = i[1]
-            classnum = i[2]
-            
-            self.likelihood[pixelnum, shade, classnum] = math.log( (pixel_counts[i]+1) / (class_counts[classnum] * pixel_count + pixel_count) )
+        for pixelnum in range(pixel_count):
+            for shade in range(shade_count):
+                for classnum in range(class_count):
+                    index = (pixelnum, shade, classnum)
+
+                    self.likelihood[pixelnum, shade, classnum] = math.log( (pixel_counts.get(index, 0)+1) / (class_counts[classnum] * pixel_count + pixel_count) )
+
+        print(len(self.likelihood))
+        print(self.likelihood[0])
 
     def test(self,test_set,test_label):
         """ Test the trained naive bayes model (self.prior and self.likelihood) on testing dataset,
