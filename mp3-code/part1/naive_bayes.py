@@ -37,17 +37,31 @@ class NaiveBayes(object):
         """
 
         k = 0.1
+        training_count = len(train_label)
+        pixel_count = len(train_set[0])
 
-        class_counts = {}
+        class_counts = {} #index: class num
+        pixel_counts = {} #index: (pixelnum, shade, classnum)
 
-        for i in range(len(train_label)):
+        for i in range(training_count):
             label = train_label[i]
             class_counts[label] = class_counts.get(label, 0) + 1
+            
+            image = train_set[i]
+            for j in range(len(image)):
+                shade = image[j]
+                index = (j, shade, i)
+                pixel_counts[index] = pixel_counts.get(index, 0) + 1
 
-        print(class_counts)
-        print(len(train_label))
-        
-        pass
+        for i in class_counts.keys():
+            self.prior[i] = math.log(class_counts[i]/training_count)
+
+        for i in pixel_counts.keys():
+            pixelnum = i[0]
+            shade = i[1]
+            classnum = i[2]
+            
+            self.likelihood[pixelnum, shade, classnum] = math.log( (pixel_counts[i]+1) / (class_counts[classnum] * pixel_count + pixel_count) )
 
     def test(self,test_set,test_label):
         """ Test the trained naive bayes model (self.prior and self.likelihood) on testing dataset,
