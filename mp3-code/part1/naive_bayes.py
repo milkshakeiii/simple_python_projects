@@ -66,11 +66,6 @@ class NaiveBayes(object):
 
                     self.likelihood[pixelnum, shade, classnum] = math.log( (pixel_counts.get(index, 0)+k) / (class_counts[classnum] + k*pixel_count) )
 
-        print(len(self.prior))
-        print(self.prior)
-        print(len(self.likelihood))
-        print(self.likelihood[0][1])
-
     def test(self,test_set,test_label):
         """ Test the trained naive bayes model (self.prior and self.likelihood) on testing dataset,
             by performing maximum a posteriori (MAP) classification.  
@@ -104,8 +99,6 @@ class NaiveBayes(object):
 
         accuracy = len([i for i in range(len(test_set)) if pred_label[i] == test_label[i]])/len(test_set)
 
-        print(accuracy, pred_label)
-
         return accuracy, pred_label
 
 
@@ -137,7 +130,6 @@ class NaiveBayes(object):
             feature_likelihoods(numpy.ndarray): feature likelihoods for each class with a dimension of
                 (# of features/pixels per image, # of class)
         """
-        # YOUR CODE HERE
         
         feature_likelihoods = np.zeros((likelihood.shape[0],likelihood.shape[2]))
 
