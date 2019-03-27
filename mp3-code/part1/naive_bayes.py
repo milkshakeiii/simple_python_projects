@@ -64,10 +64,12 @@ class NaiveBayes(object):
                 for classnum in range(class_count):
                     index = (pixelnum, shade, classnum)
 
-                    self.likelihood[pixelnum, shade, classnum] = math.log( (pixel_counts.get(index, 0)+1) / (class_counts[classnum] * pixel_count + pixel_count) )
+                    self.likelihood[pixelnum, shade, classnum] = math.log( (pixel_counts.get(index, 0)+k) / (class_counts[classnum] + k*pixel_count) )
 
+        print(len(self.prior))
+        print(self.prior)
         print(len(self.likelihood))
-        print(self.likelihood[0])
+        print(self.likelihood[0][1])
 
     def test(self,test_set,test_label):
         """ Test the trained naive bayes model (self.prior and self.likelihood) on testing dataset,
@@ -83,13 +85,26 @@ class NaiveBayes(object):
             accuracy(float): average accuracy value  
             pred_label(numpy.ndarray): predicted labels with a dimension of (# of examples, )
         """    
+        pred_label = []
 
-        # YOUR CODE HERE
+        for item in test_set:
+            maximum_value = float('-inf')
+            maximum_class = -1
+            
+            for classnum in range(self.num_class):
+                posterior_probability = self.prior[classnum]
+                for i in range(self.feature_dim):
+                    posterior_probability = posterior_probability + self.likelihood[i, item[i], classnum]
+                if posterior_probability > maximum_value:
+                    maximum_value = posterior_probability
+                    maximum_class = classnum
 
-        accuracy = 0
-        pred_label = np.zeros((len(test_set)))
+            pred_label.append(maximum_class)
+                
 
-        pass
+        accuracy = len([i for i in range(len(test_set)) if pred_label[i] == test_label[i]])/len(test_set)
+
+        print(accuracy, pred_label)
 
         return accuracy, pred_label
 
@@ -125,5 +140,12 @@ class NaiveBayes(object):
         # YOUR CODE HERE
         
         feature_likelihoods = np.zeros((likelihood.shape[0],likelihood.shape[2]))
+
+        for classnum in range(self.num_class):
+            for pixelnum in range(self.feature_dim):
+                shade_sum = 0
+                for shade in range(128, 256):
+                    shade_sum += math.exp(self.likelihood[pixelnum, shade, classnum])
+                feature_likelihoods[pixelnum, classnum] = math.exp(shade_sum)
 
         return feature_likelihoods
