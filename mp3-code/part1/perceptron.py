@@ -30,7 +30,7 @@ class MultiClassPerceptron(object):
         n = 1
         iterations = 1
 
-        for iter in range(iterations):
+        for itr in range(iterations):
             updates = 0
             for i in range(len(train_set)):
                 item = train_set[i]
@@ -42,7 +42,9 @@ class MultiClassPerceptron(object):
                     updates += 1
                     self.w[:,label] = self.w[:,label] + item * n
                     self.w[:,predicted_label] = self.w[:,predicted_label] - item * n
-                
+
+            #print ("updates:" + str(updates))
+            
     def decide(self, feature_vector):
         best_class = -1
         best_dot = float('-inf')
