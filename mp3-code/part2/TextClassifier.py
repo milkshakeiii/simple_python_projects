@@ -6,6 +6,7 @@
 # attribution to the University of Illinois at Urbana-Champaign
 #
 # Created by Dhruv Agarwal (dhruva2@illinois.edu) on 02/21/2019
+import math
 
 """
 You should only modify code within this file -- the unrevised staff files will be used for all other
@@ -19,6 +20,8 @@ class TextClassifier(object):
         and Unigram model in the mixture model. Hard Code the value you find to be most suitable for your model
         """
         self.lambda_mixture = 0.0
+        self.prior = {} #index: classnum
+        self.likelihood = {} #index: word, classnum
 
     def fit(self, train_set, train_label):
         """
@@ -31,8 +34,37 @@ class TextClassifier(object):
             Then train_labels := [0,1]
         """
 
-        # TODO: Write your code here
-        pass
+        
+        k = 1
+        training_count = len(train_label)
+
+        class_counts = {} #index: class num
+        words_per_class = {} #index: class num
+        word_counts = {} #index: (word, classnum)
+        words = set()
+
+        for i in range(training_count):
+            label = train_label[i]
+            class_counts[label] = class_counts.get(label, 0) + 1
+            
+            document = train_set[i]
+            words_per_class[label] = words_per_class.get(label, 0) + len(document)
+            
+            for word in document:
+                words.add(word)
+                index = (word, label)
+                word_counts[index] = word_counts.get(index, 0) + 1
+
+        for i in class_counts.keys():
+            self.prior[i] = math.log(class_counts[i]/training_count)
+
+        for word in words:
+            for classnum in class_counts.keys():
+                index = (word, classnum)
+
+                self.likelihood[word, classnum] = math.log( (word_counts.get(index, 0)+k) / (words_per_class[classnum] + k*len(words)) )
+
+        print(self.likelihood[0])
 
     def predict(self, x_set, dev_label,lambda_mix=0.0):
         """
@@ -46,11 +78,29 @@ class TextClassifier(object):
                 result (list) : predicted class for each text
         """
 
-        accuracy = 0.0
-        result = []
+        test_set = x_set
+        test_label = dev_label
+        
+        class_labels = self.prior.keys()
+        pred_label = []
 
-        # TODO: Write your code here
-        pass
+        for document in test_set:
+            maximum_value = float('-inf')
+            maximum_class = -1
+            
+            for classnum in class_labels:
+                posterior_probability = self.prior[classnum]
+                for word in document:
+                    if (word, classnum) in self.likelihood:
+                        posterior_probability = posterior_probability + self.likelihood[word, classnum]
+                if posterior_probability > maximum_value:
+                    maximum_value = posterior_probability
+                    maximum_class = classnum
 
-        return accuracy,result
+            pred_label.append(maximum_class)
+                
+
+        accuracy = len([i for i in range(len(test_set)) if pred_label[i] == test_label[i]])/len(test_set)
+
+        return accuracy, pred_label
 
