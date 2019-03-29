@@ -32,6 +32,10 @@ class MultiClassPerceptron(object):
 
         for itr in range(iterations):
             updates = 0
+            rand = np.random.get_state()
+            np.random.shuffle(train_set)
+            np.random.set_state(rand)
+            np.random.shuffle(train_label)
             for i in range(len(train_set)):
                 item = train_set[i]
                 item = np.append(item, 1)
@@ -43,7 +47,7 @@ class MultiClassPerceptron(object):
                     self.w[:,label] = self.w[:,label] + item * n
                     self.w[:,predicted_label] = self.w[:,predicted_label] - item * n
 
-            #print ("updates:" + str(updates))
+            print ("updates:" + str(updates))
             
     def decide(self, feature_vector):
         best_class = -1
@@ -79,7 +83,7 @@ class MultiClassPerceptron(object):
 
         accuracy = len([i for i in range(len(test_set)) if pred_label[i] == test_label[i]])/len(test_set)
 
-        #print("Accuraccy: " + str(accuracy))
+        print("Accuraccy: " + str(accuracy))
         return accuracy, pred_label
 
     def save_model(self, weight_file):
