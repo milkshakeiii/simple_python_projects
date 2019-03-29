@@ -32,10 +32,10 @@ class MultiClassPerceptron(object):
 
         for itr in range(iterations):
             updates = 0
-            rand = np.random.get_state()
-            np.random.shuffle(train_set)
-            np.random.set_state(rand)
-            np.random.shuffle(train_label)
+            #rand = np.random.get_state()
+            #np.random.shuffle(train_set)
+            #np.random.set_state(rand)
+            #np.random.shuffle(train_label)
             for i in range(len(train_set)):
                 item = train_set[i]
                 item = np.append(item, 1)
