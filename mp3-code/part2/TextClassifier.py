@@ -22,6 +22,7 @@ class TextClassifier(object):
         self.lambda_mixture = 0.0
         self.prior = {} #index: classnum
         self.likelihood = {} #index: word, classnum
+        self.bigram_likelihood = {} #index (word, word) transition, classnum
 
     def fit(self, train_set, train_label):
         """
@@ -40,8 +41,11 @@ class TextClassifier(object):
 
         class_counts = {} #index: class num
         words_per_class = {} #index: class num
+        transitions_per_class = {} #index: classnum
         word_counts = {} #index: (word, classnum)
+        transition_counts = {} #index: (transition, classnum)
         words = set()
+        transitions = set()
 
         for i in range(training_count):
             label = train_label[i]
@@ -49,11 +53,18 @@ class TextClassifier(object):
             
             document = train_set[i]
             words_per_class[label] = words_per_class.get(label, 0) + len(document)
+            transitions_per_class[label] = transitions_per_class.get(label, 0) + len(document) - 1
             
             for word in document:
                 words.add(word)
                 index = (word, label)
                 word_counts[index] = word_counts.get(index, 0) + 1
+
+            for i in range(1, len(document)):
+                transition = (document[i-1], document[i])
+                transitions.add(transition)
+                index = (transition, label)
+                transition_counts[index] = transition_counts.get(index, 0) + 1
 
         for i in class_counts.keys():
             self.prior[i] = math.log(class_counts[i]/training_count)
@@ -61,12 +72,14 @@ class TextClassifier(object):
         for word in words:
             for classnum in class_counts.keys():
                 index = (word, classnum)
-
                 self.likelihood[word, classnum] = math.log( (word_counts.get(index, 0)+k) / (words_per_class[classnum] + k*len(words)) )
 
-        print(self.likelihood[0])
+        for transition in transitions:
+            for classnum in class_counts.keys():
+                index = (transition, classnum)
+                self.bigram_likelihood[transition, classnum] = math.log( (transition_counts.get(index, 0)+k) / (transitions_per_class[classnum] + k*len(transitions)) )
 
-    def predict(self, x_set, dev_label,lambda_mix=0.0):
+    def predict(self, x_set, dev_label, lambda_mix=0.0):
         """
         :param dev_set: List of list of words corresponding with each text in dev set that we are testing on
               It follows the same format as train_set
@@ -93,8 +106,16 @@ class TextClassifier(object):
                 for word in document:
                     if (word, classnum) in self.likelihood:
                         posterior_probability = posterior_probability + self.likelihood[word, classnum]
-                if posterior_probability > maximum_value:
-                    maximum_value = posterior_probability
+
+                bigram_posterior = self.prior[classnum] + self.likelihood.get((document[0], classnum), 0)
+                for i in range(1, len(document)):
+                    transition = (document[i-1], document[i])
+                    if (transition, classnum) in self.bigram_likelihood:
+                        bigram_posterior = bigram_posterior + self.bigram_likelihood[transition, classnum]
+                   
+                combined_posterior = (1 - lambda_mix) * posterior_probability + lambda_mix * bigram_posterior
+                if combined_posterior > maximum_value:
+                    maximum_value = combined_posterior
                     maximum_class = classnum
 
             pred_label.append(maximum_class)
