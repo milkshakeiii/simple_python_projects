@@ -1,5 +1,6 @@
 import math
 import numpy as np
+#import matplotlib.pyplot as plt
 
 class NaiveBayes(object):
     def __init__(self,num_class,feature_dim,num_value):
@@ -81,8 +82,14 @@ class NaiveBayes(object):
             pred_label(numpy.ndarray): predicted labels with a dimension of (# of examples, )
         """    
         pred_label = []
+#        high_low_probability_per_class = {}
+#        for classnum in range(self.num_class):
+#            high_low_probability_per_class[classnum, True] = (None, None, float('-inf'))
+#            high_low_probability_per_class[classnum, False] = (None, None, float('inf'))
 
-        for item in test_set:
+        for itemno in range(len(test_set)):
+            item = test_set[itemno]
+            true_label = test_label[itemno]
             maximum_value = float('-inf')
             maximum_class = -1
             
@@ -94,11 +101,34 @@ class NaiveBayes(object):
                     maximum_value = posterior_probability
                     maximum_class = classnum
 
+#                if (classnum == true_label and posterior_probability > high_low_probability_per_class[classnum, True][2]):
+#                    high_low_probability_per_class[classnum, True] = (item, itemno, posterior_probability)
+#                if (classnum == true_label and posterior_probability < high_low_probability_per_class[classnum, False][2]):
+#                    high_low_probability_per_class[classnum, False] = (item, itemno, posterior_probability)
+
             pred_label.append(maximum_class)
                 
 
         accuracy = len([i for i in range(len(test_set)) if pred_label[i] == test_label[i]])/len(test_set)
+#        print("Accuracy: " + str(accuracy))
 
+#        for classnum in range(self.num_class):
+#            print("--class " + str(classnum) + "--")
+#            print("high probability index: " + str(high_low_probability_per_class[classnum, True][1]) + " value: " + str(high_low_probability_per_class[classnum, True][2]))
+#            item = high_low_probability_per_class[classnum, True][0]
+#            fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+#            ax[0].imshow(item.reshape((28, 28)), cmap="Greys")
+#            ax[0].set_xticks([])
+#            ax[0].set_yticks([])
+#            ax[0].set_title("(high) class " + str(classnum))
+#            print("low probability index: " + str(high_low_probability_per_class[classnum, False][1]) + " value: " + str(high_low_probability_per_class[classnum, False][2]))
+#            item = high_low_probability_per_class[classnum, False][0]
+#            ax[1].imshow(item.reshape((28, 28)), cmap="Greys")
+#            ax[1].set_xticks([])
+#            ax[1].set_yticks([])
+#            ax[1].set_title("(low) class " + str(classnum))
+#            plt.show()
+        
         return accuracy, pred_label
 
 

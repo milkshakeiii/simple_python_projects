@@ -1,4 +1,5 @@
 import numpy as np
+#import matplotlib.pyplot as plt
 
 class MultiClassPerceptron(object):
     def __init__(self,num_class,feature_dim):
@@ -41,6 +42,7 @@ class MultiClassPerceptron(object):
                 item = np.append(item, 1)
                 label = train_label[i]
 
+#                predicted_label = self.decide(item, {}, -1, -1)
                 predicted_label = self.decide(item)
                 if predicted_label != label:
                     updates += 1
@@ -49,6 +51,7 @@ class MultiClassPerceptron(object):
 
             #print ("updates:" + str(updates))
             
+#    def decide(self, feature_vector, high_low_probability_per_class, true_label, itemno):
     def decide(self, feature_vector):
         best_class = -1
         best_dot = float('-inf')
@@ -58,6 +61,11 @@ class MultiClassPerceptron(object):
             if dot > best_dot:
                 best_dot = dot
                 best_class = current_class
+
+#            if (current_class == true_label and dot > high_low_probability_per_class[current_class, True][2]):
+#                high_low_probability_per_class[current_class, True] = (feature_vector, itemno, dot)
+#            if (current_class == true_label and dot < high_low_probability_per_class[current_class, False][2]):
+#                high_low_probability_per_class[current_class, False] = (feature_vector, itemno, dot)
 
         return best_class
 
@@ -77,13 +85,38 @@ class MultiClassPerceptron(object):
 
         pred_label = []
 
-        for item in test_set:
+#        high_low_probability_per_class = {}
+#        for classnum in range(self.w.shape[1]):
+#            high_low_probability_per_class[classnum, True] = (None, None, float('-inf'))
+#            high_low_probability_per_class[classnum, False] = (None, None, float('inf'))
+
+        for i in range(len(test_set)):
+            item = test_set[i]
             item = np.append(item, 1)
+            true_label = test_label[i]
             pred_label.append(self.decide(item))
+#            pred_label.append(self.decide(item, high_low_probability_per_class, true_label, i))
 
         accuracy = len([i for i in range(len(test_set)) if pred_label[i] == test_label[i]])/len(test_set)
 
-        #print("Accuraccy: " + str(accuracy))
+#        for classnum in range(self.w.shape[1]):
+#            print("--class " + str(classnum) + "--")
+#            print("high probability index: " + str(high_low_probability_per_class[classnum, True][1]) + " value: " + str(high_low_probability_per_class[classnum, True][2]))
+#            item = high_low_probability_per_class[classnum, True][0][:784]
+#            fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+#            ax[0].imshow(item.reshape((28, 28)), cmap=None)
+#            ax[0].set_xticks([])
+#            ax[0].set_yticks([])
+#            ax[0].set_title("(high) class " + str(classnum))
+#            print("low probability index: " + str(high_low_probability_per_class[classnum, False][1]) + " value: " + str(high_low_probability_per_class[classnum, False][2]))
+#            item = high_low_probability_per_class[classnum, False][0][:784]
+#            ax[1].imshow(item.reshape((28, 28)), cmap=None)
+#            ax[1].set_xticks([])
+#            ax[1].set_yticks([])
+#            ax[1].set_title("(low) class " + str(classnum))
+#            plt.show()
+
+#        print("Accuraccy: " + str(accuracy))
         return accuracy, pred_label
 
     def save_model(self, weight_file):
