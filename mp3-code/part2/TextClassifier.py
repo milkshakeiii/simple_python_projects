@@ -79,6 +79,16 @@ class TextClassifier(object):
                 index = (transition, classnum)
                 self.bigram_likelihood[transition, classnum] = math.log( (transition_counts.get(index, 0)+k) / (transitions_per_class[classnum] + k*len(transitions)) )
 
+#        for classnum in class_counts.keys():
+#            likely_words = []
+#            for word, label in self.likelihood.keys():
+#                if label == classnum:
+#                    likely_words.append((self.likelihood[word, label], word))
+#
+#            print(str(classnum) + ":")
+#            print(sorted(likely_words, key = lambda x: -x[0])[:20])
+            
+
     def predict(self, x_set, dev_label, lambda_mix=0.0):
         """
         :param dev_set: List of list of words corresponding with each text in dev set that we are testing on
@@ -97,9 +107,16 @@ class TextClassifier(object):
         class_labels = self.prior.keys()
         pred_label = []
 
-        for document in test_set:
+#        word_counts = {}
+
+        for i in range(len(test_set)):
+            document = test_set[i]
+            true_label = test_label[i]
             maximum_value = float('-inf')
             maximum_class = -1
+
+#            for word in document:
+#                word_counts[word, true_label] = word_counts.get((word, true_label), 0) + 1
             
             for classnum in class_labels:
                 posterior_probability = self.prior[classnum]
@@ -122,6 +139,15 @@ class TextClassifier(object):
                 
 
         accuracy = len([i for i in range(len(test_set)) if pred_label[i] == test_label[i]])/len(test_set)
+
+#        for classnum in class_labels:
+#            likely_words = []
+#            for word, label in word_counts.keys():
+#                if (label == classnum):
+#                    likely_words.append((word_counts[word, label], word))
+#
+#            print(str(classnum) + ":")
+#            print (sorted(likely_words, key = lambda x: -x[0])[:5])
 
         return accuracy, pred_label
 
