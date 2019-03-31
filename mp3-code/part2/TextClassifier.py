@@ -87,6 +87,9 @@ class TextClassifier(object):
 #
 #            print(str(classnum) + ":")
 #            print(sorted(likely_words, key = lambda x: -x[0])[:20])
+
+#        for classnum in class_counts.keys():
+#            print("prior" + str(classnum) + ": " + str(class_counts[classnum] / len(train_set)))
             
 
     def predict(self, x_set, dev_label, lambda_mix=0.0):
@@ -108,10 +111,14 @@ class TextClassifier(object):
         pred_label = []
 
 #        word_counts = {}
+#        class_counts = {}
 
         for i in range(len(test_set)):
             document = test_set[i]
             true_label = test_label[i]
+            
+#            class_counts[true_label] = class_counts.get(true_label, 0) + 1
+            
             maximum_value = float('-inf')
             maximum_class = -1
 
@@ -148,6 +155,9 @@ class TextClassifier(object):
 #
 #            print(str(classnum) + ":")
 #            print (sorted(likely_words, key = lambda x: -x[0])[:5])
+
+#        for classnum in class_labels:
+#            print(str(classnum) + ": " + str(class_counts[classnum]/len(test_set)))
 
         return accuracy, pred_label
 
