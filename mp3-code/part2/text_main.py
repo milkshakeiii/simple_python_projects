@@ -96,7 +96,7 @@ if __name__ == '__main__':
     MNB = TextClassifier()
     MNB.fit(x_train, y_train)
 
-    accuracy,pred = MNB.predict(x_test, y_test, lambda_mix=0.6)
+    accuracy,pred = MNB.predict(x_test, y_test, lambda_mix=1)
     compute_results(y_test,pred)
 
     print("Accuracy {0:.4f}".format(accuracy))
