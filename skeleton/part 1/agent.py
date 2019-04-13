@@ -14,6 +14,7 @@ class Agent:
         # Create the Q and N Table to work with
         self.Q = utils.create_q_table()
         self.N = utils.create_q_table()
+        self.reset()
 
     def train(self):
         self._train = True
@@ -47,7 +48,6 @@ class Agent:
         (Note that [adjoining_wall_x=0, adjoining_wall_y=0] is also the case when snake runs out of the 480x480 board)
 
         '''
-        print (state[2])
         snake_head_x, snake_head_y, snake_body, food_x, food_y = state
         adjoining_wall_x = 0
         if snake_head_x == 40:
@@ -69,51 +69,64 @@ class Agent:
             food_dir_y = 1
         if food_y > snake_head_y:
             food_dir_y = 2
-        adjoining_body_top = adjoining_body_botom = adjoining_body_left = adjoining_body_right = 0
-        if (snake_head_x + 0, snake_head_y - 1) in snake_body:
+        #print ((food_x, food_y), (snake_head_x, snake_head_y), food_dir_x, food_dir_y)
+        adjoining_body_top = adjoining_body_bottom = adjoining_body_left = adjoining_body_right = 0
+        if (snake_head_x + 0, snake_head_y - 40) in snake_body:
             adjoining_body_top = 1
-        if (snake_head_x + 0, snake_head_y - 1) in snake_body:
+        if (snake_head_x + 0, snake_head_y + 40) in snake_body:
             adjoining_body_bottom = 1
-        if (snake_head_x + 0, snake_head_y - 1) in snake_body:
-            adjoining_body_top = 1
-        if (snake_head_x + 0, snake_head_y - 1) in snake_body:
-            adjoining_body_top = 1
+        if (snake_head_x - 40, snake_head_y - 0) in snake_body:
+            adjoining_body_left = 1
+        if (snake_head_x + 40, snake_head_y - 0) in snake_body:
+            adjoining_body_right = 1
+        #print(snake_body, (snake_head_x, snake_head_y), adjoining_body_top, adjoining_body_bottom, adjoining_body_left, adjoining_body_right)
         
         
-        state = [adjoining_wall_x,
+        state = (adjoining_wall_x,
                  adjoining_wall_y,
                  food_dir_x,
                  food_dir_y,
                  adjoining_body_top,
                  adjoining_body_bottom,
                  adjoining_body_left,
-                 adjoining_body_right]
-    
-        def f(u, n):
-            if n < self.Ne:
-                return 1
-            else:
-                return u
+                 adjoining_body_right)
 
-        if not dead:
-            if self._train:
-                action = max([f(self.Q[state + [aprime]], self.N[state + [aprime]]) for aprime in self.actions])
+        #exploration function
+        def f(u, n):
+            return_value = None
+            if n < self.Ne:
+                return_value = 1
             else:
-                action = max([self.Q[state + [aprime]] for aprime in self.actions])
-        else:
-            self.reset()
-            return 0
+                return_value = u
+            return return_value
 
         if (self.s != None) and self._train:
             R = -0.1
             if dead:
                 R = -1
-            elif state[0] == state[3] and state[2] == state[4]:
+            elif points > self.points:
                 R = 1
+                
+            alpha = self.C / (self.C + self.N[self.s + (self.a,)])
+            next_action_q = max([self.Q[state + (aprime,)] for aprime in self.actions])
+            self.Q[self.s + (self.a,)] = self.Q[self.s + (self.a,)] + alpha*(R + self.gamma*next_action_q - self.Q[self.s + (self.a,)])
 
-            alpha = C / (C + self.N[self.s + [self.a]])
-            self.Q[self.s + [self.a]] = self.Q[self.s + [self.a]] + alpha*(R + self.gamma*self.Q[state + [action]] - self.Q[self.s + [self.a]])
+        if not dead:
+            if self._train:
+                possible_actions = [(f(self.Q[state + (aprime,)], self.N[state + (aprime,)]), aprime) for aprime in self.actions]
+                action = max(possible_actions)[1]
+                #print(possible_actions, action)
+            else:
+                action = max([(self.Q[state + (aprime,)], aprime) for aprime in self.actions])[1]
 
+            self.N[state + (action,)] = self.N[state + (action,)] + 1
+            
+        else:
+            action = 0
+
+        self.points = points
         self.s = state
         self.a = action
+        if dead:
+            self.reset()
         return self.a
