@@ -77,17 +77,33 @@ def affine_forward(A, W, b):
     return Z, (A, W, b)
 
 def affine_backward(dZ, cache):
-    pass
-    #return dA, dW, dB
+
+    W = cache[1]
+    A = cache[0]
+    b= cache[2]
+
+    dA = np.matmul(dZ, np.transpose(W))
+    dW = np.matmul(np.transpose(A), dZ)
+    db = dZ.sum(axis=0)
+    
+    return dA, dW, db
 
 def relu_forward(Z):
-    pass
-    #return A, cache
+    cache = np.copy(Z)
+
+    Z = Z.clip(min=0)
+    
+    return Z, cache
 
 def relu_backward(dA, cache):
-    pass
-    #return dA
+
+    for i in range(dA.shape[0]):
+        for j in rage(dA.shape[1]):
+            if cache[i, j] == 0:
+                dA[i, j]  = 0
+    
+    return dA
 
 def cross_entropy(F, y):
-    pass
-    #return loss, dF
+    
+    return loss, dF
