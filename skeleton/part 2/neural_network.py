@@ -68,16 +68,26 @@ def four_nn():
         This is a great time to review on your linear algebra as well.
 """
 def affine_forward(A, W, b):
-    return Z, cache
+
+    Z = np.matmul(A, W)
+
+    for j in range(Z.shape[1]):
+        Z[:,j] += b[j]
+    
+    return Z, (A, W, b)
 
 def affine_backward(dZ, cache):
-    return dA, dW, dB
+    pass
+    #return dA, dW, dB
 
 def relu_forward(Z):
-    return A, cache
+    pass
+    #return A, cache
 
 def relu_backward(dA, cache):
-    return dA
+    pass
+    #return dA
 
 def cross_entropy(F, y):
-    return loss, dF
+    pass
+    #return loss, dF
