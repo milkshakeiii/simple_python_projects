@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 """
     Minigratch Gradient Descent Function to train model
@@ -89,21 +90,36 @@ def affine_backward(dZ, cache):
     return dA, dW, db
 
 def relu_forward(Z):
-    cache = np.copy(Z)
-
+    
     Z = Z.clip(min=0)
     
-    return Z, cache
+    return Z, np.copy(Z)
 
 def relu_backward(dA, cache):
 
     for i in range(dA.shape[0]):
-        for j in rage(dA.shape[1]):
+        for j in range(dA.shape[1]):
             if cache[i, j] == 0:
                 dA[i, j]  = 0
     
     return dA
 
 def cross_entropy(F, y):
+
+    n = len(y)
+
+    F_columns = [np.sum( math.e**F[i,:] ) for i in range(n)]
+
+    outer_sum = sum([F[i, int(y[i])] - math.log(F_columns[i]) for i in range(n)])
+    L = (-1/n)*outer_sum
+
+    dF = np.zeros(F.shape)
+    for i in range(F.shape[0]):
+        for j in range(F.shape[1]):
+            left = 0
+            if j == int(y[i]):
+                left = 1
+            dF[i, j] = (-1/n) * ( left - math.exp(F[i, j])/F_columns[i] )
     
-    return loss, dF
+    
+    return L, dF
