@@ -24,7 +24,20 @@ import math
 """
 def minibatch_gd(epoch, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, num_classes, shuffle=True):
 
-    #IMPLEMENT HERE
+    batch_size = 200
+    losses = []
+    
+    for e in range(epoch):
+        print("Epoch " + str(e))
+        if shuffle:
+            rand = np.random.get_state()
+            np.random.shuffle(x_test)
+            np.random.set_state(rand)
+            np.random.shuffle(y_test)
+        for i in range(len(y_train)//batch_size):
+            loss = four_nn(x_train, w1, w2, w3, w4, b1, b2, b3, b4, y_train)
+
+        losses.append(loss)
 
     return w1, w2, w3, w4, b1, b2, b3, b4, losses
 
@@ -56,8 +69,33 @@ def test_nn(w1, w2, w3, w4, b1, b2, b3, b4, x_test, y_test, num_classes):
     Up to you on how to implement this, won't be unit tested
     Should call helper functions below
 """
-def four_nn():
-    pass
+def four_nn(x_train, w1, w2, w3, w4, b1, b2, b3, b4, y_train):
+
+    z1, acache1 = affine_forward(X, w1, b1)
+    a1, rcache1 = relu_forward(z1)
+    z2, acache2 = affine_forward(a1, w2, b2)
+    a2, rcache2 = relu_forward(z2)
+    z3, acache3 = affine_forward(a2, w3, b3)
+    a3, rcache3 = relu_forward(z3)
+    F, acache4 = affine_forward(a3, w4, b4)
+
+    loss, dF = cross_entropy(F, y_train)
+
+    da3, dw4, db4 = affine_backward(dF, acache4)
+    dz3 = relu_backward(da3, rcache3)
+    da2, dw3, db3 = affine_backward(dz3, acache3)
+    dz2 = relu_backward(da2, acache2)
+    da1, dw2, db2 = affine_backward(dz2, acache2)
+    dz1 = relu_backward(da1, acache1)
+    dX, dw1, db1 = affine_backward(dz1, acache1)
+
+    eta = 0.1
+    w1 = w1 - eta*dw1
+    w2 = w2 - eta*dw2
+    w3 = w3 - eta*dw3
+    w4 = w4 - eta*dw4
+
+    return loss
 
 """
     Next five functions will be used in four_nn() as helper functions.
