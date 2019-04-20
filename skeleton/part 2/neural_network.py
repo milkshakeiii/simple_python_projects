@@ -31,9 +31,9 @@ def minibatch_gd(epoch, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, num_cl
         print("Epoch " + str(e))
         if shuffle:
             rand = np.random.get_state()
-            np.random.shuffle(x_test)
+            np.random.shuffle(x_train)
             np.random.set_state(rand)
-            np.random.shuffle(y_test)
+            np.random.shuffle(y_train)
         for i in range(len(y_train)//batch_size):
             rand = np.random.get_state()
             X = x_train[np.random.choice(x_train.shape[0], batch_size, replace=False), :]
