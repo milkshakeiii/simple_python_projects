@@ -43,14 +43,10 @@ def minibatch_gd(epoch, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, num_cl
             np.random.set_state(rand)
             y = y_train[np.random.choice(y_train.shape[0], batch_size, replace=False)]
 
-            print(w1[0])
             loss += four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y)
-            print(w1[0])
-            dog
 
         losses.append(loss)
 
-    print(w1[0])
     return w1, w2, w3, w4, b1, b2, b3, b4, losses
 
 """
@@ -121,17 +117,15 @@ def four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y):
     dX, dw1, db1 = affine_backward(dz1, acache1)
 
     eta = 0.1
-    print (w1[0])
-    w1 = w1 - eta*dw1
-    print (w1[0])
-    w2 = w2 - eta*dw2
-    w3 = w3 - eta*dw3
-    w4 = w4 - eta*dw4
+    w1 -= eta*dw1
+    w2 -= eta*dw2
+    w3 -= eta*dw3
+    w4 -= eta*dw4
 
-    b1 = b1 - eta*db1
-    b2 = b2 - eta*db2
-    b3 = b3 - eta*db3
-    b4 = b4 - eta*db4
+    b1 -= eta*db1
+    b2 -= eta*db2
+    b3 -= eta*db3
+    b4 -= eta*db4
 
     return loss
 
