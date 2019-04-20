@@ -26,7 +26,7 @@ def minibatch_gd(epoch, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, num_cl
 
     batch_size = 200
     losses = []
-    
+
     for e in range(epoch):
         print("Epoch " + str(e))
         loss = 0
@@ -36,15 +36,21 @@ def minibatch_gd(epoch, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, num_cl
             np.random.shuffle(x_train)
             np.random.set_state(rand)
             np.random.shuffle(y_train)
+            
         for i in range(len(y_train)//batch_size):
             rand = np.random.get_state()
             X = x_train[np.random.choice(x_train.shape[0], batch_size, replace=False), :]
             np.random.set_state(rand)
             y = y_train[np.random.choice(y_train.shape[0], batch_size, replace=False)]
+
+            print(w1[0])
             loss += four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y)
+            print(w1[0])
+            dog
 
         losses.append(loss)
 
+    print(w1[0])
     return w1, w2, w3, w4, b1, b2, b3, b4, losses
 
 """
@@ -104,7 +110,6 @@ def four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y):
     a3, rcache3 = relu_forward(z3)
     F, acache4 = affine_forward(a3, w4, b4)
 
-    print(F[0], y[0])
     loss, dF = cross_entropy(F, y)
 
     da3, dw4, db4 = affine_backward(dF, acache4)
@@ -116,10 +121,17 @@ def four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y):
     dX, dw1, db1 = affine_backward(dz1, acache1)
 
     eta = 0.1
+    print (w1[0])
     w1 = w1 - eta*dw1
+    print (w1[0])
     w2 = w2 - eta*dw2
     w3 = w3 - eta*dw3
     w4 = w4 - eta*dw4
+
+    b1 = b1 - eta*db1
+    b2 = b2 - eta*db2
+    b3 = b3 - eta*db3
+    b4 = b4 - eta*db4
 
     return loss
 
