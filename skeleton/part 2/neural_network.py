@@ -29,6 +29,8 @@ def minibatch_gd(epoch, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, num_cl
     
     for e in range(epoch):
         print("Epoch " + str(e))
+        loss = 0
+        
         if shuffle:
             rand = np.random.get_state()
             np.random.shuffle(x_train)
@@ -39,7 +41,7 @@ def minibatch_gd(epoch, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, num_cl
             X = x_train[np.random.choice(x_train.shape[0], batch_size, replace=False), :]
             np.random.set_state(rand)
             y = y_train[np.random.choice(y_train.shape[0], batch_size, replace=False)]
-            loss = four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y)
+            loss += four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y)
 
         losses.append(loss)
 
@@ -65,6 +67,17 @@ def test_nn(w1, w2, w3, w4, b1, b2, b3, b4, x_test, y_test, num_classes):
 
     avg_class_rate = 0.0
     class_rate_per_class = [0.0] * num_classes
+
+    z1, acache1 = affine_forward(x_test, w1, b1)
+    a1, rcache1 = relu_forward(z1)
+    z2, acache2 = affine_forward(a1, w2, b2)
+    a2, rcache2 = relu_forward(z2)
+    z3, acache3 = affine_forward(a2, w3, b3)
+    a3, rcache3 = relu_forward(z3)
+    F, acache4 = affine_forward(a3, w4, b4)
+
+    
+    
     return avg_class_rate, class_rate_per_class
 
 """
@@ -162,6 +175,5 @@ def cross_entropy(F, y):
             if j == int(y[i]):
                 left = 1
             dF[i, j] = (-1/n) * ( left - math.exp(F[i, j])/F_columns[i] )
-    
     
     return L, dF
