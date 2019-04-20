@@ -76,9 +76,17 @@ def test_nn(w1, w2, w3, w4, b1, b2, b3, b4, x_test, y_test, num_classes):
     a3, rcache3 = relu_forward(z3)
     F, acache4 = affine_forward(a3, w4, b4)
 
+    class_counts = [0 for i in range(num_classes)]
+    correct_per_class = [0 for i in range(num_classes)]
     
-    
-    return avg_class_rate, class_rate_per_class
+    for i in range(len(y_test)):
+        actual_class = y_test[i]
+        predicted_class = np.argmax(F[i])
+        class_counts[actual_class] = class_counts[actual_class] + 1
+        if int(predicted_class) == int(actual_class):
+            correct_per_class[actual_class] = correct_per_class[actual_class] + 1
+        
+    return sum(correct_per_class) / sum(class_counts), [correct_per_class[i] / class_counts[i] for i in range(num_classes)]
 
 """
     4 Layer Neural Network
@@ -96,6 +104,7 @@ def four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y):
     a3, rcache3 = relu_forward(z3)
     F, acache4 = affine_forward(a3, w4, b4)
 
+    print(F[0], y[0])
     loss, dF = cross_entropy(F, y)
 
     da3, dw4, db4 = affine_backward(dF, acache4)
