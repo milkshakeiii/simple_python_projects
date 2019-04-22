@@ -159,7 +159,7 @@ def affine_backward(dZ, cache):
 
     W = cache[1]
     A = cache[0]
-    b= cache[2]
+    b = cache[2]
 
     dA = np.matmul(dZ, np.transpose(W))
     dW = np.matmul(np.transpose(A), dZ)
