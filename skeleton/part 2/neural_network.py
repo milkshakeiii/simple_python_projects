@@ -36,12 +36,12 @@ def minibatch_gd(epoch, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, num_cl
             np.random.shuffle(x_train)
             np.random.set_state(rand)
             np.random.shuffle(y_train)
-            
-        for i in range(len(y_train)//batch_size):
-            rand = np.random.get_state()
-            X = x_train[np.random.choice(x_train.shape[0], batch_size, replace=False), :]
-            np.random.set_state(rand)
-            y = y_train[np.random.choice(y_train.shape[0], batch_size, replace=False)]
+
+        for i in range(len(x_train)//batch_size):
+            left = i*(batch_size)
+            right = (i+1)*(batch_size)
+            X = x_train[left:right]
+            y = y_train[left:right]
 
             loss += four_nn(X, w1, w2, w3, w4, b1, b2, b3, b4, y)
 
@@ -80,14 +80,22 @@ def test_nn(w1, w2, w3, w4, b1, b2, b3, b4, x_test, y_test, num_classes):
 
     class_counts = [0 for i in range(num_classes)]
     correct_per_class = [0 for i in range(num_classes)]
+    class_by_class = np.zeros((num_classes, num_classes))
     
     for i in range(len(y_test)):
         actual_class = y_test[i]
         predicted_class = np.argmax(F[i])
-        class_counts[actual_class] = class_counts[actual_class] + 1
+        class_counts[actual_class] += 1
         if int(predicted_class) == int(actual_class):
-            correct_per_class[actual_class] = correct_per_class[actual_class] + 1
-        
+            correct_per_class[actual_class] += 1
+        class_by_class[actual_class, predicted_class] += 1
+
+    for i in range(num_classes):
+        for j in range(num_classes):
+            class_by_class[i, j] /= class_counts[i]
+    
+    print("Confusion matrix:")
+    print(class_by_class)
     return sum(correct_per_class) / sum(class_counts), [correct_per_class[i] / class_counts[i] for i in range(num_classes)]
 
 """
@@ -167,10 +175,8 @@ def relu_forward(Z):
 
 def relu_backward(dA, cache):
 
-    for i in range(dA.shape[0]):
-        for j in range(dA.shape[1]):
-            if cache[i, j] == 0:
-                dA[i, j]  = 0
+    zeros = np.argwhere(cache == 0)
+    dA[zeros[:, 0], zeros[:, 1]] = 0
     
     return dA
 
