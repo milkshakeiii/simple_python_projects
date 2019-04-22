@@ -33,7 +33,7 @@ if __name__ == '__main__':
         w3, b3 = init_weights(256, 256)
         w4, b4 = init_weights(256, 10)
 
-    num_epochs = 50
+    num_epochs = 10
     start_time = time.time()
     #cProfile.run('minibatch_gd(num_epochs, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, 10)')
     w1, w2, w3, w4, b1, b2, b3, b4, losses = minibatch_gd(num_epochs, w1, w2, w3, w4, b1, b2, b3, b4, x_train, y_train, 10)
