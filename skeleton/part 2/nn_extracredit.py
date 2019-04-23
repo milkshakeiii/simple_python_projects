@@ -111,6 +111,8 @@ eval_input_fn = tf.estimator.inputs.numpy_input_fn(
 eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
 print(eval_results)
 
-predictions = mnist_classifier.predict(input_fn=eval_input_fn)
+predictions = list(mnist_classifier.predict(input_fn=eval_input_fn))
+predictions = [np.argmax(prediction['probabilities']) for prediction in predictions]
 confusion = tf.confusion_matrix(labels=eval_labels, predictions=predictions, num_classes=10)
-print(confusion)
+with tf.Session() as sess:
+    print(confusion.eval(session=sess))
