@@ -312,7 +312,10 @@ def bfs(gamestate, player, seconds, zones):
         for move in gamestate.legal_moves_generator(player, zones):
             loop_start = time.time()
             small_loop_count += 1
-            unturn_data = gamestate.turn(move, Move([]), zones)
+            if player == 0:
+                unturn_data = gamestate.turn(move, Move([]), zones)
+            else:
+                unturn_data = gamestate.turn(Move([]), move, zones)
             this_plan = (gamestate.evaluation, entry_counter, None, sequence + [move])
             entry_counter += 1
             #heapq.heappush(frontier, this_plan)
@@ -335,7 +338,8 @@ def bfs(gamestate, player, seconds, zones):
         return Move([])
     return best_plan[3][0]
     
-            
+def zoney(gamestate, player, seconds, zones):
+    
 
 # playerCount: the amount of players (always 2)
 # myId: my player ID (0 or 1)
@@ -399,7 +403,7 @@ while True:
                                   player_0_income,
                                   player_1_income)
 
-    planned_move = bfs(current_gamestate, my_id, 0.08, zones)    
+    planned_move = zoney(current_gamestate, my_id, 0.08, zones)    
 
     print(planned_move.move_string()) # first line for movement commands, second line no longer used (see the protocol in the statement for details)
     print("WAIT")
