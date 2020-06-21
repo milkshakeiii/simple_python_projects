@@ -86,13 +86,16 @@ def doRandomSearch(depth, width, board):
 
     random_moves = []
     start_time = time.time()
+    loops = 0
     while (time.time() - start_time < 5):
+        loops += 1
         setRandomMove(board)
         action = board.current_player.next_actions.copy()
         advanced_board = board.next()
         random_moves.append((doRandomSearch(depth-1, width, advanced_board)[0], action))
 
     best_move = max(random_moves, key=lambda move: move[0])
+    print(loops)
     return best_move
         
 
