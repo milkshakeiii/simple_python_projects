@@ -155,7 +155,8 @@ def stranger_danger(board, ship, forbidden_positions):
     if must_run:
         for i in range(4):
             if not occupied_directions[i]:
-                forbidable_move(ship, direction_list[(i+2)%4][1], forbidden_positions, board)
+                forbidable_move(ship, direction_list[i][1], forbidden_positions, board)
+                #print(occupied_directions)
                 return True
     return False
 
