@@ -105,23 +105,28 @@ def forbidable_move(ship, direction, forbidden_positions, board):
         forbidden_positions[cell.position] = True
 
 def step_off_direction(ship, board, forbidden_positions):
+    cells = [board[ship.position].west,
+             board[ship.position].north,
+             board[ship.position].east,
+             board[ship.position].south]
+    random.shuffle(cells)
     stepoff_dir = get_dir_to(ship.position,
-                             board[ship.position].west.position,
+                             cells[0].position,
                              board,
                              forbidden_positions)
     if stepoff_dir == None:
         stepoff_dir = get_dir_to(ship.position,
-                                 board[ship.position].north.position,
+                                 cells[1].position,
                                  board,
                                  forbidden_positions)
     if stepoff_dir == None:
         stepoff_dir = get_dir_to(ship.position,
-                                 board[ship.position].east.position,
+                                 cells[2].position,
                                  board,
                                  forbidden_positions)
     if stepoff_dir == None:
         stepoff_dir = get_dir_to(ship.position,
-                                 board[ship.position].south.position,
+                                 cells[3].position,
                                  board,
                                  forbidden_positions)
     #print(stepoff_dir)
@@ -138,6 +143,7 @@ def stranger_danger(board, ship, forbidden_positions):
                       (board[ship.position].north, halite.ShipAction.NORTH),
                       (board[ship.position].east, halite.ShipAction.EAST),
                       (board[ship.position].south, halite.ShipAction.SOUTH)]
+    random.shuffle(direction_list)
     for directions in direction_list:
         direction = directions[0]
         chase_command = directions[1]
@@ -253,6 +259,6 @@ def agent(board):
             continue
             
     #if(board.step < 10 or board.step % 50 == 0):
-    print("step " + str(board.step))
+    #print("step " + str(board.step))
                 
     return board

@@ -58,7 +58,7 @@ def evaluate(board):
     evaluation += len(board.current_player.ships) * 1000
     evaluation += board.current_player.halite
     for ship in board.current_player.ships:
-        evaluation += ship.halite * 0.1
+        evaluation += ship.halite * 0.02
     return evaluation
 
 def setRandomMove(board):
@@ -87,7 +87,7 @@ def doRandomSearch(depth, width, board):
     random_moves = []
     start_time = time.time()
     loops = 0
-    while (time.time() - start_time < 5):
+    while (time.time() - start_time < 0.1):
         loops += 1
         setRandomMove(board)
         action = board.current_player.next_actions.copy()
@@ -111,8 +111,8 @@ def agent(obs, config):
 
     actions = randomSearch(1, 60, board)
 
-    if(board.step < 10 or board.step % 50 == 0):
-        print("turn " + str(board.step))
+    #if(board.step < 10 or board.step % 50 == 0):
+        #print("turn " + str(board.step))
 
     del_us = []
     for key in actions.keys():
