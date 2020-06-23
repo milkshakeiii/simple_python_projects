@@ -95,7 +95,7 @@ def doRandomSearch(depth, width, board):
         random_moves.append((doRandomSearch(depth-1, width, advanced_board)[0], action))
 
     best_move = max(random_moves, key=lambda move: move[0])
-    print(loops)
+    #print(loops)
     return best_move
         
 
