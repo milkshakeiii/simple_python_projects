@@ -1,7 +1,7 @@
 import kaggle_environments.envs.halite.helpers as halite
 from kaggle_environments.envs.halite.helpers import *
 
-import random, time, cProfile
+import random, time, cProfile, copy
 
 
 ########################
@@ -11,7 +11,6 @@ import random, time, cProfile
 
 def turn(obs, config, moves):
     ship_moves, shipyard_moves = moves
-    print(moves)
 
 
 
@@ -31,19 +30,19 @@ def evaluate(obs, config):
     return evaluation
 
 def randomMove(obs, config, player_id):
-    ship_actions = [action for action in halite.ShipAction]
-    shipyard_actions = [action for action in halite.ShipyardAction]
+    ship_actions = [action.name for action in halite.ShipAction]
+    shipyard_actions = [action.name for action in halite.ShipyardAction]
     random_ship_actions = {}
     random_shipyard_actions = {}
     for ship_id in obs['players'][player_id][2].keys():
         if (obs['step'] == 0):
-            random_ship_actions[ship_id] = halite.ShipAction.CONVERT
+            random_ship_actions[ship_id] = halite.ShipAction.CONVERT.name
         else:
             random_action = random.choice(ship_actions + [None])
             if random_action is not None:
                 random_ship_actions[ship_id] = random_action
     for shipyard_id in obs['players'][player_id][1].keys():
-        if (obs['step'] > 300):
+        if (obs['step'] < 300):
             random_action = random.choice(shipyard_actions + [None])
             if random_action is not None:
                 random_shipyard_actions[shipyard_id] = random_action
@@ -52,7 +51,8 @@ def randomMove(obs, config, player_id):
 #returns best moves after a random sampling
 def randomSearch(depth, width, obs, config):
     my_moves = doRandomSearch(depth, width, obs, config)[1]
-    return my_moves[0].update(my_moves[1])
+    my_moves[0].update(my_moves[1])
+    return my_moves[0]
 
 #returns (evaluation, best_move)
 def doRandomSearch(depth, width, obs, config):
@@ -100,5 +100,6 @@ def agent(obs, config):
 
     #if(board.step < 10 or board.step % 50 == 0):
     print("turn " + str(board.step))
+    print(actions)
 
     return actions
