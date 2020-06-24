@@ -2,127 +2,110 @@ import kaggle_environments.envs.halite.helpers as halite
 from kaggle_environments.envs.halite.helpers import *
 
 import random, time, cProfile, copy
+import numpy as np
 
 
 ########################
 # Simulation functions #
 ########################
 
+#ship dict is (x, y) position: list of (halite, owner) pairs (list len is 1 between turns)
+#shipyard dict is (x, y) position: owner
+def battle_board(obs, config, start_pos, width, height):
+    board = Board(obs, config)
+    ship_box = {}
+    shipyard_box = {}
+    for i in range(start_pos[0], width):
+        for j in range(start_pos[1], height):
+            ship = board[i, j].ship
+            if ship != None:
+                ship_box[i, j] = [(ship.halite, ship.player.id)]
+            shipyard = board[i, j].shipyard
+            if shipyard != None:
+                shipyard_box[i, j] = shipyard.player.id
 
-def turn(obs, configuration, ships_by_position, shipyards_by_position, moves):
-    ship_moves, shipyard_moves = moves
+    return (ship_box, shipyard_box)    
 
-    convert_cost = configuration.convert_cost
-    spawn_cost = configuration.spawn_cost
-    uid_counter = 0
+#we want this to be performant
+def turn(dict_boards, moves):
+    ship_box, shipyard_box = dict_boards
+    ship_actions, shipyard_actions = moves
+    new_ship_box = {}
+    new_shipyard_box = {}
 
-    # This is a consistent way to generate unique strings to form ship and shipyard ids
-    def create_uid():
-        nonlocal uid_counter
-        uid_counter += 1
-        return f"{self.step + 1}-{uid_counter}"
+    #move ships into lists and convert
+    for ship_position, ship_action in ship_actions.items():
+        if ship_action == "CONVERT":
+            if ship_position not in shipyard_box:
+                new_shipyard_box[ship_position] = ship_box[ship_position][0][1]
+                continue
+            else:
+                move_direction = (0, 0)
+        elif ship_action == "STAY":
+            move_direction = (0, 0)
+        elif ship_action == "WEST":
+            move_direction = (-1, 0)
+        elif ship_action == "EAST":
+            move_direction = (1, 0)
+        elif ship_action == "NORTH":
+            move_direction = (0, 1)
+        elif ship_action == "SOUTH":
+            move_direction = (0, -1)
+        else:
+            raise Exception("Unrecognized ship command: " + ship_action)
+        target_position = (ship_position[0] + move_direction[0],
+                           ship_position[1] + move_direction[1])
+        moving_ship = ship_box[ship_position][0]
+        new_ship_box[target_position] = new_ship_box.get(target_position, []) + [moving_ship]
 
-    # Process actions and store the results in the ships and shipyards lists for collision checking
-    for player in obs['players']:
-        player_halite, player_shipyards, player_ships = player
-        leftover_convert_halite = 0
+    #spawn ships into lists and copy shipyards
+    for shipyard_position, shipyard_action in shipyard_actions.items():
+        new_shipyard_box[shipyard_position] = shipyard_box[shipyard_position]
+        if shipyard_action == "SPAWN":
+            new_ship = (0, shipyard_box[shipyard_position])
+            new_ship_box[shipyard_position] = new_ship_box.get(shipyard_position, []) + [new_ship]
+        elif shipyard_action != "SLEEP":
+            raise Exception("Unrecognized ship command: " + ship_action)
 
-        for shipyard, position in player_shipyards.items():
-            if shipyard_moves[shipyard] == "SPAWN" and player_halite >= spawn_cost:
-                # Handle SPAWN actions
-                player_halite -= spawn_cost
-                player_ships[create_uid()] = [position, 0]
+    #collide ships
+    explode_us = []
+    for ship_position, ship_list in new_ship_box.items():
+        min_halite, min_owner = min(ship_list)
+        halites = [ship[0] for ship in ship_list]
+        if halites.count(min_halite) > 1:
+            explode_us.append(ship_position)
+        else:
+            new_ship_box[ship_position] = (sum(halites), min_owner)
+    for explode_me in explode_us:
+        del new_ship_box[explode_me]
 
-        for ship, value in player_ships:
-            position, ship_halite = value
-            if ship_moves[ship] == "CONVERT":
-                # Can't convert on an existing shipyard but you can use halite in a ship to fund conversion
-                if ship.cell.shipyard_id is None and (ship.halite + player.halite) >= convert_cost:
-                    # Handle CONVERT actions
-                    delta_halite = ship.halite - convert_cost
-                    # Excess halite leftover from conversion is added to the player's total only after all conversions have completed
-                    # This is to prevent the edge case of chaining halite from one convert to fund other converts
-                    leftover_convert_halite += max(delta_halite, 0)
-                    player._halite += min(delta_halite, 0)
-                    board._add_shipyard(Shipyard(ShipyardId(create_uid()), ship.position, player.id, board))
-                    board._delete_ship(ship)
-            elif ship.next_action is not None:
-                # If the action is not None and is not CONVERT it must be NORTH, SOUTH, EAST, or WEST
-                ship.cell._ship_id = None
-                ship._position = ship.position.translate(ship.next_action.to_point(), configuration.size)
-                ship._halite *= (1 - board.configuration.move_cost)
-                # We don't set the new cell's ship_id here as it would be overwritten by another ship in the case of collision.
-                # Later we'll iterate through all ships and re-set the cell._ship_id as appropriate.
+    #ship-shipyard interaction
+    explode_us = []
+    for shipyard_position, shipyard_owner in new_shipyard_box.items():
+        if shipyard_position in new_ship_box:
+            ship_halite, ship_owner = new_ship_box[shipyard_position]
+            if ship_owner == shipyard_owner:
+                new_ship_box[shipyard_position] = (0, ship_owner) #HALITE COLLECTED
+            else:
+                explode_us.append(shipyard_position)
+    for explode_me in explode_us:
+        del new_shipyard_box[explode_me]
 
-        player._halite += leftover_convert_halite
-        # Lets just check and make sure.
-        assert player.halite >= 0
+    return new_ship_box, new_shipyard_box
 
-    def resolve_collision(ships: List[Ship]) -> Tuple[Optional[Ship], List[Ship]]:
-        """
-        Accepts the list of ships at a particular position (must not be empty).
-        Returns the ship with the least halite or None in the case of a tie along with all other ships.
-        """
-        if len(ships) == 1:
-            return ships[0], []
-        ships_by_halite = group_by(ships, lambda ship: ship.halite)
-        smallest_halite = min(ships_by_halite.keys())
-        smallest_ships = ships_by_halite[smallest_halite]
-        if len(smallest_ships) == 1:
-            # There was a winner, return it
-            winner = smallest_ships[0]
-            return winner, [ship for ship in ships if ship != winner]
-        # There was a tie for least halite, all are deleted
-        return None, ships
+    
+        
 
-    # Check for ship to ship collisions
-    ship_collision_groups = group_by(board.ships.values(), lambda ship: ship.position)
-    for position, collided_ships in ship_collision_groups.items():
-        winner, deleted = resolve_collision(collided_ships)
-        if winner is not None:
-            winner.cell._ship_id = winner.id
-        for ship in deleted:
-            board._delete_ship(ship)
-            if winner is not None:
-                # Winner takes deleted ships' halite
-                winner._halite += ship.halite
+    
+        
+        
+        
 
-    # Check for ship to shipyard collisions
-    for shipyard in list(board.shipyards.values()):
-        ship = shipyard.cell.ship
-        if ship is not None and ship.player_id != shipyard.player_id:
-            # Ship to shipyard collision
-            board._delete_shipyard(shipyard)
-            board._delete_ship(ship)
 
-    # Deposit halite from ships into shipyards
-    for shipyard in list(board.shipyards.values()):
-        ship = shipyard.cell.ship
-        if ship is not None and ship.player_id == shipyard.player_id:
-            shipyard.player._halite += ship.halite
-            ship._halite = 0
+def tuple_location(location):
+    return location%21, 20-location//21
+    
 
-    # Collect halite from cells into ships
-    for ship in board.ships.values():
-        cell = ship.cell
-        delta_halite = int(cell.halite * configuration.collect_rate)
-        if ship.next_action not in ShipAction.moves() and cell.shipyard_id is None and delta_halite > 0:
-            ship._halite += delta_halite
-            cell._halite -= delta_halite
-        # Clear the ship's action so it doesn't repeat the same action automatically
-        ship.next_action = None
-
-    # Regenerate halite in cells
-    for cell in board.cells.values():
-        if cell.ship_id is None:
-            next_halite = round(cell.halite * (1 + configuration.regen_rate), 3)
-            cell._halite = min(next_halite, configuration.max_cell_halite)
-            # Lets just check and make sure.
-        assert cell.halite >= 0
-
-    board._step += 1
-
-    return board
 
 
 
@@ -141,35 +124,38 @@ def evaluate(obs, config):
         evaluation += halite_cargo * 0.1
     return evaluation
 
+#move dicts are (x, y) position: "NORTH", "SOUTH", "EAST", "WEST", "STAY"
+#or "SPAWN", "SLEEP"
 def randomMove(obs, config, player_id):
     ship_actions = [action.name for action in halite.ShipAction]
     shipyard_actions = [action.name for action in halite.ShipyardAction]
     random_ship_actions = {}
     random_shipyard_actions = {}
-    for ship_id in obs['players'][player_id][2].keys():
+    for ship in obs['players'][player_id][2].values():
+        ship_location, ship_halite = ship
+        ship_location = tuple_location(ship_location)
         if (obs['step'] == 0):
-            random_ship_actions[ship_id] = halite.ShipAction.CONVERT.name
+            random_ship_actions[ship_location] = halite.ShipAction.CONVERT.name
         else:
-            random_action = random.choice(ship_actions + [None])
+            random_action = random.choice(ship_actions + ["STAY"])
             if random_action is not None:
-                random_ship_actions[ship_id] = random_action
-    for shipyard_id in obs['players'][player_id][1].keys():
+                random_ship_actions[ship_location] = random_action
+    for shipyard_position in obs['players'][player_id][1].values():
+        shipyard_position = tuple_location(shipyard_position)
         if (obs['step'] < 300):
-            random_action = random.choice(shipyard_actions + [None])
-            if random_action is not None:
-                random_shipyard_actions[shipyard_id] = random_action
+            random_action = random.choice(shipyard_actions + ["SLEEP"])
+            random_shipyard_actions[shipyard_position] = random_action
     return (random_ship_actions, random_shipyard_actions)
 
 #returns best moves after a random sampling
-def randomSearch(depth, width, obs, config):
-    my_moves = doRandomSearch(depth, width, obs, config)[1]
-    my_moves[0].update(my_moves[1])
-    return my_moves[0]
+def randomSearch(depth, width, obs, config, board_dicts):
+    my_moves = doRandomSearch(depth, width, obs, config, board_dicts)[1]
+    return my_moves
 
 #returns (evaluation, best_move)
-def doRandomSearch(depth, width, obs, config, ships_by_position, shipyards_by_position):
+def doRandomSearch(depth, width, obs, config, board_dicts):
     if depth == 0:
-        return (evaluate(obs, config), {})
+        return (evaluate(obs, config), ({}, {}))
 
     random_moves = []
     start_time = time.time()
@@ -177,8 +163,12 @@ def doRandomSearch(depth, width, obs, config, ships_by_position, shipyards_by_po
     while (time.time() - start_time < 5):
         loops += 1
         my_moves = randomMove(obs, config, obs['player'])
-        turn(obs, config, my_moves)
-        random_moves.append((doRandomSearch(depth-1, width, obs, config)[0], my_moves))
+        new_board_dicts = turn(board_dicts, my_moves)
+        random_moves.append((doRandomSearch(depth-1,
+                                            width,
+                                            obs,
+                                            config,
+                                            new_board_dicts)[0], my_moves))
 
     best_move = max(random_moves, key=lambda move: move[0])
     print(loops)
@@ -205,13 +195,24 @@ def agent(obs, config):
     config = dict(config)
     print(obs['players'][obs['player']])
 
-    obs['halite'] = restructure_halite(obs['halite'], config['size'])
+    halite_dict = restructure_halite(obs['halite'], config['size'])
 
-    actions = randomSearch(1, 60, obs, config)
+    board_dicts = battle_board(obs, config, (0, 0), 21, 21)
+    actions = randomSearch(1, 60, obs, config, board_dicts)
     #cProfile.runctx('randomSearch(1, 60, obs, config)', globals(), locals(), filename=None)
+
+    print(actions)
 
     #if(board.step < 10 or board.step % 50 == 0):
     print("turn " + str(board.step))
-    print(actions)
 
-    return actions
+    return_actions = {}
+    for position, action in actions[0].items(): #ships
+        if action != "STAY":
+            return_actions[board[position].ship.id] = action
+    for position, action in actions[1].items(): #shipyards
+        if action != "SLEEP":
+            return_actions[board[position].shipyard.id] = action
+
+    print (return_actions)
+    return return_actions
