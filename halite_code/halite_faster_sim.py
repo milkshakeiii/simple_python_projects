@@ -75,7 +75,7 @@ def turn(dict_boards, moves):
         if halites.count(min_halite) > 1:
             explode_us.append(ship_position)
         else:
-            new_ship_box[ship_position] = (sum(halites), min_owner)
+            new_ship_box[ship_position] = [(sum(halites), min_owner)]
     for explode_me in explode_us:
         del new_ship_box[explode_me]
 
@@ -83,13 +83,15 @@ def turn(dict_boards, moves):
     explode_us = []
     for shipyard_position, shipyard_owner in new_shipyard_box.items():
         if shipyard_position in new_ship_box:
-            ship_halite, ship_owner = new_ship_box[shipyard_position]
+            ship_halite, ship_owner = new_ship_box[shipyard_position][0]
             if ship_owner == shipyard_owner:
-                new_ship_box[shipyard_position] = (0, ship_owner) #HALITE COLLECTED
+                new_ship_box[shipyard_position] = [(0, ship_owner)] #HALITE COLLECTED
             else:
                 explode_us.append(shipyard_position)
     for explode_me in explode_us:
         del new_shipyard_box[explode_me]
+    for explode_me in explode_us:
+        del new_ship_box[explode_me]    
 
     return new_ship_box, new_shipyard_box
 
@@ -138,8 +140,7 @@ def randomMove(obs, config, player_id):
             random_ship_actions[ship_location] = halite.ShipAction.CONVERT.name
         else:
             random_action = random.choice(ship_actions + ["STAY"])
-            if random_action is not None:
-                random_ship_actions[ship_location] = random_action
+            random_ship_actions[ship_location] = random_action
     for shipyard_position in obs['players'][player_id][1].values():
         shipyard_position = tuple_location(shipyard_position)
         if (obs['step'] < 300):
@@ -216,3 +217,76 @@ def agent(obs, config):
 
     print (return_actions)
     return return_actions
+
+def test_simulation():
+    ship_box = {}
+    shipyard_box = {}
+    ship_actions = {}
+    shipyard_actions = {}
+    ship_box[0, 0] = [(0, 0)]
+    ship_box[0, 1] = [(10, 1)]
+    ship_actions[0, 0] = "NORTH"
+    ship_actions[0, 1] = "STAY"
+    (ship_box, shipyard_box) = turn((ship_box, shipyard_box), (ship_actions, shipyard_actions))
+    expected_ship_box = {(0, 1): [(10, 0)]}
+    expected_shipyard_box = {}
+    print (ship_box == expected_ship_box and shipyard_box == expected_shipyard_box)
+    
+    ship_box = {}
+    shipyard_box = {}
+    ship_actions = {}
+    shipyard_actions = {}
+    ship_box[0, 0] = [(0, 0)]
+    ship_box[1, 1] = [(0, 2)]
+    ship_box[0, 1] = [(10, 1)]
+    ship_actions[0, 0] = "NORTH"
+    ship_actions[1, 1] = "WEST"
+    ship_actions[0, 1] = "STAY"
+    (ship_box, shipyard_box) = turn((ship_box, shipyard_box), (ship_actions, shipyard_actions))
+    expected_ship_box = {}
+    expected_shipyard_box = {}
+    print (ship_box == expected_ship_box and shipyard_box == expected_shipyard_box)
+
+    ship_box = {}
+    shipyard_box = {}
+    ship_actions = {}
+    shipyard_actions = {}
+    shipyard_box[2, 0] = 0
+    ship_box[1, 0] = [(0, 2)]
+    ship_actions[1, 0] = "EAST"
+    shipyard_actions[2, 0] = "SLEEP"
+    (ship_box, shipyard_box) = turn((ship_box, shipyard_box), (ship_actions, shipyard_actions))
+    expected_ship_box = {}
+    expected_shipyard_box = {}
+    #print(ship_box, expected_ship_box)
+    print (ship_box == expected_ship_box and shipyard_box == expected_shipyard_box)
+
+    ship_box = {}
+    shipyard_box = {}
+    ship_actions = {}
+    shipyard_actions = {}
+    shipyard_box[2, 0] = 2
+    ship_box[1, 0] = [(10, 2)]
+    ship_actions[1, 0] = "EAST"
+    shipyard_actions[2, 0] = "SLEEP"
+    (ship_box, shipyard_box) = turn((ship_box, shipyard_box), (ship_actions, shipyard_actions))
+    expected_ship_box = {(2, 0): [(0, 2)]}
+    expected_shipyard_box = {(2, 0): 2}
+    #print(ship_box, expected_ship_box)
+    print (ship_box == expected_ship_box and shipyard_box == expected_shipyard_box)
+
+    ship_box = {}
+    shipyard_box = {}
+    ship_actions = {}
+    shipyard_actions = {}
+    shipyard_box[2, 0] = 0
+    ship_box[1, 0] = [(9999, 2)]
+    ship_actions[1, 0] = "EAST"
+    shipyard_actions[2, 0] = "SPAWN"
+    (ship_box, shipyard_box) = turn((ship_box, shipyard_box), (ship_actions, shipyard_actions))
+    expected_ship_box = {(2, 0): [(0, 0)]}
+    expected_shipyard_box = {(2, 0): 0}
+    #print(ship_box, expected_ship_box)
+    print (ship_box == expected_ship_box and shipyard_box == expected_shipyard_box)
+
+#test_simulation()
