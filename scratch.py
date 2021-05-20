@@ -176,5 +176,11 @@ def decimal_to_binary(r):
         print("0."+''.join(bits[1:]))
 
 
-
+def possible_ways_to_climb_stairs(n):
+    possible_ways = [1, 1, 2]
+    for i in range(3, n+1):
+        possible_ways.append(possible_ways[i-3]+
+                             possible_ways[i-2]+
+                             possible_ways[i-1])
+    return possible_ways[n]
             
