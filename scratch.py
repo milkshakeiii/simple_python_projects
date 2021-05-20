@@ -184,3 +184,43 @@ def possible_ways_to_climb_stairs(n):
                              possible_ways[i-1])
     return possible_ways[n]
             
+def snarky_count(a):
+    number_string = ''.join(map(str, a))
+    incremented_number = int(number_string)+1
+    incremented_number_string = ' '.join(str(incremented_number))
+    return list(map(int, incremented_number_string.split()))
+
+def guai_count(a: list):
+    digit_to_modify=a[-1]
+    index = len(a)-1
+    while(index >= 0 and a[index]==9):
+        index -= 1
+    if index == -1:
+        index = 0
+        a.insert(0, 0)
+    for i in range(index, len(a)):
+        a[i] = (a[i]+1)%10
+    return a
+
+import time
+
+def test_count():
+    cases = []
+    for i in range(10000):
+        a = []
+        a.append(random.randint(1, 9))
+        for i in range(1, 1000):
+            a.append(random.randint(0, 9))
+        cases.append(a)
+    start = time.time()
+    results1 = [snarky_count(a) for a in cases]
+    middle = time.time()
+    results2 = [guai_count(a) for a in cases]
+    end = time.time()
+    print("snarky time: " + str(middle-start))
+    print("guai time: " + str(end-middle))
+    print("all matching: " + str(results1==results2))
+    for i in range(len(results1)):
+        if results1[i]!=results2[i]:
+            print("a, b")
+            print(results1[i], results2[i])
