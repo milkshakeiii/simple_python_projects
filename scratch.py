@@ -319,3 +319,20 @@ def hanoi(towers, number, source, target, third_tower):
     towers[target].append(move_me)
     print(towers)
     hanoi(towers, number-1, third_tower, target, source)
+
+def print_parens(assigned, remaining):
+    if (remaining == 0):
+        print(assigned)
+    else:
+        for i in range(len(assigned)+1):
+            for j in range(i+1, len(assigned)+2):
+                old_chars = list(reversed(assigned))
+                new_assigned = ""
+                for k in range(len(assigned)+2):
+                    if (k==i):
+                        new_assigned += "("
+                    elif (k==j):
+                        new_assigned += ")"
+                    else:
+                        new_assigned += old_chars.pop()
+                print_parens(new_assigned, remaining-1)
