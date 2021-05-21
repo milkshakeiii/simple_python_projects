@@ -311,4 +311,11 @@ def nonredundant_substrings(s):
         frontier.update(children)
     return substrings
 
-
+def hanoi(towers, number, source, target, third_tower):
+    if number == 0:
+        return
+    hanoi(towers, number-1, source, third_tower, target)
+    move_me = towers[source].pop()
+    towers[target].append(move_me)
+    print(towers)
+    hanoi(towers, number-1, third_tower, target, source)
