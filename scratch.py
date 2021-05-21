@@ -191,6 +191,7 @@ def snarky_count(a):
     return list(map(int, incremented_number_string.split()))
 
 def guai_count(a: list):
+    a = a.copy()
     digit_to_modify=a[-1]
     index = len(a)-1
     while(index >= 0 and a[index]==9):
@@ -224,3 +225,90 @@ def test_count():
         if results1[i]!=results2[i]:
             print("a, b")
             print(results1[i], results2[i])
+
+from collections import Counter
+
+def permutation_matches(short_string, long_string):
+    short_string_letters = Counter(short_string)
+    first_substring = long_string[0:len(short_string)]
+    running_letters = Counter(first_substring[:-1]+long_string[-1])
+    matches = 0
+    for i in range(0, len(long_string)-len(short_string)+1):
+        running_letters[long_string[i-1]] -= 1
+        if running_letters[long_string[i-1]] == 0:
+            del running_letters[long_string[i-1]]
+        running_letters[long_string[i+len(short_string)-1]] += 1
+        if running_letters == short_string_letters:
+            print(long_string[i:i+len(short_string)])
+            matches += 1
+    return matches
+
+'''
+This isn't the way to do it- instead you should just:
+1. remove all cycles
+2. count parentless nodes
+3. 
+'''
+def count_new_flights_needed_to_connect_airports(airports, flights):
+    #preprocess edges
+    edges = {}
+    for flight in flights:
+        edges[flight[0]] = flight[1]
+
+    #find "connected components" unique tree heads
+    parsed_airports = set()
+    airports_to_sources = {}
+    sources_to_children = {}
+    connected_components = 0
+    for airport in airports:
+        if airport in parsed_airports:
+            continue
+        parse_branch(edges, airport, airports_to_sources, sources_to_children, parsed_airports)
+
+    len(sources_to_children)
+
+def parse_branch(edges, head, nodes_to_heads, heads_to_children, parsed_nodes):
+    frontier = [head]
+    while (len(frontier) > 0):
+        current_node = frontier.pop()
+        if current_node in parsed_nodes and current_node_head == current_node:
+            current_node_head = nodes_to_heads[current_node]
+            heads_to_children[head] = heads_to_children[head].union(heads_to_children[current_node])
+            for node in heads_to_children[current_node]:
+                nodes_to_heads[node] = head
+            del heads_to_children[current_node]
+        if current_node in parsed_nodes:
+            return
+        else:
+            parsed_nodes.add(current_node)
+            nodes_to_heads[current_node] = head
+            frontier += [next_node for next_node in edges[current_node]]
+
+def substrings(s):
+    for i in range(2**len(s)):
+        next_substring = ""
+        for j in range(i.bit_length()):
+            if i%2 == 1:
+                next_substring += (s[j])
+            i >>= 1
+        yield next_substring
+
+def recursive_substrings(s):
+    if s == '':
+        return []
+    substrings = [s]
+    for i in range(len(s)):
+        substrings += recursive_substrings(s[:i]+s[i+1:])
+    return substrings
+
+def nonredundant_substrings(s):
+    substrings = set()
+    frontier = set([s])
+    while len(frontier)>0:
+        current = frontier.pop()
+        substrings.add(current)
+        children = [current[:i]+current[i+1:] for i in range(len(current))]
+        frontier.update(children)
+    return substrings
+
+
