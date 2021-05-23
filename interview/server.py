@@ -1,11 +1,9 @@
-import queue
 import select
+import socket
 import socketserver
 import time
 
-HOST = "localhost"
-PORT = 9999
-TIMEOUT = 10
+from collections import deque
 
 def simulated_dirlist(full_path):
     full_path = full_path.strip("/")
@@ -54,10 +52,10 @@ class ChallengeTCPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         # self.request is the TCP socket connected to the client
         self.request.setblocking(False)
-        time.sleep(1)
 
         #prepared_responses = queue.Queue()
-        client_requests = queue.Queue()
+        unanswered_requests = deque()
+        responses_sent = 0
         
         client_disconnected = False
         while not client_disconnected:
@@ -67,18 +65,20 @@ class ChallengeTCPHandler(socketserver.BaseRequestHandler):
                 if len(requests)==0:
                     client_disconnected = True
                 for request in requests:
-                    client_requests.put(request)
+                    unanswered_requests.append(request)
 
-            _, ready_to_send, _ = select.select([], [self.request], [], 60)
-            if not client_requests.empty() and self.request in ready_to_send:
-                request = client_requests.get()
-                self.respond_to_request(request)
+            while len(unanswered_requests) > 0:
+                _, ready_to_send, _ = select.select([], [self.request], [], 60)
+                if self.request in ready_to_send:
+                    request = unanswered_requests.popleft()
+                    responses_sent += 1
+                    if (responses_sent%1000)==0:
+                        print(responses_sent)
+                    self.respond_to_request(request)
             
         print("client disconnected, cleaning up")
 
+
 if __name__ == "__main__":
-    # Create the server, binding to localhost on port 9999
-    with socketserver.TCPServer((HOST, PORT), ChallengeTCPHandler) as server:
-        # Activate the server; this will keep running until you
-        # interrupt the program with Ctrl-C
+    with socketserver.TCPServer(("localhost", 9999), ChallengeTCPHandler) as server:
         server.serve_forever()
