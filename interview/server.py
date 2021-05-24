@@ -54,7 +54,7 @@ class ChallengeTCPHandler(socketserver.BaseRequestHandler):
         request_parts = request.split()
         if request_parts[0] == f"DIRLIST":
             if len(request_parts) > 2:
-                self.error_and_close("Invalid syntax, expected DIRLIST dirname/")
+                self.error_and_close("Invalid syntax, expected DIRLIST /dirname/")
             if request_parts[1][0] != "/" or request_parts[1][-1] != "/":
                 self.error_and_close(
                     "Directory must start and end with a '/' character."
