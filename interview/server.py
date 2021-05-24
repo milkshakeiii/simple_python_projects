@@ -35,7 +35,7 @@ class ChallengeTCPHandler(socketserver.BaseRequestHandler):
         self.leftover_received_data = data_parts[-1]
         return data_parts[:-1]
 
-    def respond_to_request(self, request: str):
+    def respond_to_request(self, request: str) -> None:
         request_parts = request.split()
         if request_parts[0] == f"DIRLIST":
             if len(request_parts) > 2:
@@ -53,12 +53,12 @@ class ChallengeTCPHandler(socketserver.BaseRequestHandler):
         else:
             self.error_and_close("Unrecognized request: " + request_parts[0])
 
-    def error_and_close(self, error_message: str):
+    def error_and_close(self, error_message: str) -> None:
         error_bytes = bytes("ERROR " + error_message, "utf-8" + f"\r\n")
         self.request.sendall(error_bytes)
         disconnect = True
 
-    def handle(self):
+    def handle(self) -> None:
         print("a new client connected")
 
         self.request.setblocking(False)
