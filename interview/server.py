@@ -5,12 +5,12 @@ import socketserver
 from collections import deque
 
 
-"""
-Returns a list of directory names that would be at the path provided.
-
-Returns an empty list for paths not found in our filesystem.
-"""
 def simulated_dirlist(full_path) -> list:
+    """
+    Returns a list of directory names that would be at the path provided.
+
+    Returns an empty list for paths not found in our filesystem.
+    """
     full_path = full_path.strip("/")
     names_in_path = full_path.split("/")
     for name in names_in_path:
@@ -56,15 +56,19 @@ class ChallengeTCPHandler(socketserver.BaseRequestHandler):
             if len(request_parts) > 2:
                 self.error_and_close("Invalid syntax, expected DIRLIST dirname/")
             if request_parts[1][0] != "/" or request_parts[1][-1] != "/":
-                self.error_and_close("Directory must start and end with a '/' character.")
+                self.error_and_close(
+                    "Directory must start and end with a '/' character."
+                )
             names_listed = simulated_dirlist(request_parts[1])
             if len(names_listed) == 0:
-                self.error_and_close("No directory exists named: " + str(request_parts[1]))
+                self.error_and_close(
+                    "No directory exists named: " + str(request_parts[1])
+                )
             response = f"BEGIN\r\n"
             for name in names_listed:
                 response += " " + name + f"\r\n"
             response += f"END\r\n"
-            if (not self.disconnect):
+            if not self.disconnect:
                 send_me = self.leftover_unsent_data + bytes(response, "utf-8")
                 sent = self.request.send(send_me)
                 self.leftover_unsent_data = send_me[sent:]
