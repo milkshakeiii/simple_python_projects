@@ -4,6 +4,7 @@ import socketserver
 
 from collections import deque
 
+
 def simulated_dirlist(full_path):
     full_path = full_path.strip("/")
     names_in_path = full_path.split("/")
@@ -11,6 +12,7 @@ def simulated_dirlist(full_path):
         return ["file_00", "file_01", "file_02"]
     else:
         return ["dir_%02d/" % (i,) for i in range(100)]
+
 
 class ChallengeTCPHandler(socketserver.BaseRequestHandler):
     """
@@ -58,31 +60,31 @@ class ChallengeTCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         print("a new client connected")
-        
+
         self.request.setblocking(False)
 
         unanswered_requests = deque()
         responses_sent = 0
-        
+
         while not self.disconnect:
-            
+
             ready_to_read, _, _ = select.select([self.request], [], [], 60)
-            if self.request in ready_to_read: #receive requests
+            if self.request in ready_to_read:  # receive requests
                 requests = self.receive_requests()
-                if len(requests)==0:
+                if len(requests) == 0:
                     self.disconnect = True
                 for request in requests:
                     unanswered_requests.append(request)
 
-            while len(unanswered_requests) > 0: #respond to all requests
+            while len(unanswered_requests) > 0:  # respond to all requests
                 _, ready_to_send, _ = select.select([], [self.request], [], 60)
-                if self.request in ready_to_send: 
+                if self.request in ready_to_send:
                     request = unanswered_requests.popleft()
                     responses_sent += 1
-                    if (responses_sent%5000)==0:
+                    if (responses_sent % 5000) == 0:
                         print(str(responses_sent) + " responses sent to this client.")
                     self.respond_to_request(request)
-            
+
         print("client disconnected, cleaning up")
 
 
