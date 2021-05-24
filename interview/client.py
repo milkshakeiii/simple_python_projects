@@ -26,7 +26,7 @@ class ChallengeClient():
             response_thread = threading.Thread(target=self.receive_responses, args=(sock, exit_event))
             response_thread.start()
 
-            files_found = self.do_scan()
+            files_found = self.do_scan(exit_event)
             print('{:,}'.format(files_found) + " file(s) found.")
 
             exit_event.set()
@@ -50,13 +50,16 @@ class ChallengeClient():
                 decoded_data = str(response_data, "utf-8")
                 if decoded_data == "":
                     break
+                if "ERROR" in decoded_data:
+                    print(decoded_data)
+                    exit_event.set()
                 decoded_response = unfinished_response + decoded_data
                 split_responses = decoded_response.split(f"END\r\n")
                 unfinished_response = split_responses[-1]
                 for response in split_responses[:-1]:
                     self.server_responses.put(response)
 
-    def do_scan(self) -> int:
+    def do_scan(self, exit_event: threading.Event) -> int:
         unanswered_dirlists = deque()
         files_found = 0
         responses_processed = 0
@@ -70,13 +73,13 @@ class ChallengeClient():
             ### program's runtime to increase more than tenfold.
             ### I was therefore unable to fulfill this part of the
             ### challenge requirement
-            ### while(prepared_requests.qsize() > 20):
+            ### while(prepared_requests.qsize() > 20): #for example
             ###     pass
             self.prepared_requests.put(request)
 
         enqueue_request("/")
         
-        while len(unanswered_dirlists) > 0:
+        while len(unanswered_dirlists) > 0 and not exit_event.is_set():
             if not self.server_responses.empty():
                 received = self.server_responses.get()
                 responses_processed += 1
