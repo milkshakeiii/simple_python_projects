@@ -5,7 +5,7 @@ import socketserver
 from collections import deque
 
 
-def simulated_dirlist(full_path) -> list:
+def simulated_dirlist(full_path: str) -> list:
     """
     Returns a list of directory names that would be at the path provided.
 
