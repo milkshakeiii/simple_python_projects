@@ -20,4 +20,4 @@ An alternative solution to this challenge would have exploited the nature of our
 Question 4:
 Depth first search would not be a good choice for this situation because it would require the client to query the server, wait for a list of directories, and then choose the first directory and query the server again, and wait again, and so on.  When the client gets a list of directories, it knows it needs to send requests for each of those directories, and should therefore send them in batches rather than waiting for network delay for every one of them.
 
-My approach is a bredth first search where the client queues up requests for every directory as it receives them.  This should be significantly more performant over a network.  However, my approach has a flaw in that I queue up too many requests at a time, using a large amount of memory.
+My approach is a bredth first search where the client queues up requests for every directory as it receives them.  This should be significantly more performant over a network.  However, my approach has a flaw in that I queue up too many requests at a time, using more memory than is required.
