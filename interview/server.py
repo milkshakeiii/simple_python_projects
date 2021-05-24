@@ -104,7 +104,7 @@ class ChallengeTCPHandler(socketserver.BaseRequestHandler):
                     request = unanswered_requests.popleft()
                     responses_sent += 1
                     if (responses_sent % 5000) == 0:
-                        print(str(responses_sent) + " responses sent to this client.")
+                        print(str(responses_sent) + " responses sent to this client")
                     self.respond_to_request(request)
 
         print("client disconnected, cleaning up")

@@ -104,7 +104,7 @@ class ChallengeClient:
                     or responses_processed % 10000 == 0
                 ):
                     print(str(responses_processed) + " responses processed so far")
-                    print(str(self.prepared_requests.qsize()) + " requests in queue.")
+                    print(str(self.prepared_requests.qsize()) + " requests in queue")
                     print(str(files_found) + " files found so far")
 
         return files_found
