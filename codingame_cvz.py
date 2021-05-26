@@ -1,5 +1,7 @@
 import sys
 import math
+import random
+import time
 from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import List, Set
@@ -193,9 +195,70 @@ def advanced_gamestate(gamestate: Gamestate, turn: Turn):
 
     return next_gamestate
 
-    
-    
+def gameover(gamestate):
+    no_humans = len(gamestate.human_positions) == 0
+    no_zombies = len(gamestate.zombie_positions) == 0
+    return no_humans or no_zombies
 
+def energy(gamestate, solution):
+    turn = Turn(target=solution[0])
+    while not gameover(gamestate):
+        if (len(solution) > 0):
+            turn = Turn(target=solution.pop())
+        gamestate = advanced_gamestate(gamestate, turn)
+    return -gamestate.points/10000
+
+def simulated_annealing(starting_gamestate, computation_time):
+    def temperature(current_time, computation_time):
+        return max(0.01, current_time/computation_time)
+
+    def acceptance_probability(old_energy, new_energy, current_temperature):
+        return new_energy <= old_energy
+        #exponent = ((old_energy-new_energy)/current_temperature)
+        #left_side = math.e**exponent
+        #print(old_energy, new_energy, file=sys.stderr)
+        #return left_side > random.random()
+
+    def random_point():
+        return Point(random.randint(0, BOARD_WIDTH),
+                     random.randint(0,BOARD_HEIGHT))
+
+    start_time = time.time()
+
+    current_solution = [random_point() for i in range(15)]
+    old_energy = energy(starting_gamestate, current_solution[:])
+    best_energy = old_energy
+    best_solution = current_solution
+    
+    current_time = time.time()-start_time
+    iterations = 0
+    acceptances = 0
+    while (current_time < computation_time):
+        iterations += 1
+        random_neighbor = current_solution[:]
+        random_index = random.randint(0,len(random_neighbor)-1)
+        random_neighbor[random_index] = random_point()
+        new_energy = energy(starting_gamestate, random_neighbor[:])
+        if new_energy < best_energy:
+            best_energy = new_energy
+            best_solution = random_neighbor
+        current_time = time.time()-start_time
+        current_temperature = temperature(current_time, computation_time)
+        if acceptance_probability(old_energy, new_energy, current_temperature):
+            current_solution = random_neighbor
+            old_energy = new_energy
+            acceptances += 1
+
+    print("iterations: " + str(iterations), file=sys.stderr)
+    print("acceptances: " + str(acceptances), file=sys.stderr)
+    print("best energy: " + str(best_energy), file=sys.stderr)
+    return best_solution
+        
+        
+    
+    
+first_half_solution = [Point(0, 0)]
+second_half_solution = [Point(0, 0)]
 
 # game loop
 next_gamestate = None
@@ -224,7 +287,27 @@ while True:
     if next_gamestate and next_gamestate != current_gamestate:
         print(next_gamestate, current_gamestate)
         dog
-    target = Point(human_x, human_y)
+
+    
+
+    if next_gamestate == None:
+        think_time = 0.9
+        first_half_solution = simulated_annealing(current_gamestate, think_time)
+    else:
+        think_time = 0.09
+        second_half_solution = simulated_annealing(current_gamestate, think_time)
+
+    target = Point(0, 0)
+    if (len(first_half_solution) == 0):
+        first_half_solution = [target]
+    first_half_energy = energy(current_gamestate, first_half_solution[:])
+    second_half_energy = energy(current_gamestate, second_half_solution[:])
+    if first_half_energy < second_half_energy:
+        print(first_half_solution, file=sys.stderr)
+        target = first_half_solution.pop()
+    else:
+        first_half_solution.pop()
+        target = second_half_solution.pop()
     next_gamestate = advanced_gamestate(current_gamestate, Turn(target=target))
     
-    print(human_x, human_y)
+    print(target.x, target.y)
