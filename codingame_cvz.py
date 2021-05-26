@@ -131,12 +131,12 @@ def fibonacci(n):
 def square_distance(a, b):
     return (a.x-b.x)**2 + (a.y-b.y)**2
 
-def nearest_neighbor(query, positions):
-    best_neighbor = None
-    best_square_distance = float('inf')
+def nearest_neighbor(query, positions, extra_position):
+    best_neighbor = extra_position
+    best_square_distance = square_distance(query, extra_position)
     for this_position in positions:
         this_square_distance = square_distance(query, this_position)
-        if this_square_distance < best_square_distance:
+        if this_square_distance <= best_square_distance:
             best_neighbor = this_position
             best_square_distance = this_square_distance
     return best_neighbor
@@ -160,12 +160,11 @@ def advanced_gamestate(gamestate: Gamestate, turn: Turn):
     
     #advance zombies
     advanced_zombies = []
-    gamestate.human_positions.add(gamestate.ash_position)
     for zombie_position in gamestate.zombie_positions:
-        nearest_human = nearest_neighbor(zombie_position, gamestate.human_positions)
+        nearest_human = nearest_neighbor(zombie_position,
+                                         gamestate.human_positions,
+                                         gamestate.ash_position)
         advanced_zombies.append(advanced_toward(zombie_position, nearest_human, 400))
-    gamestate.human_positions.remove(gamestate.ash_position)
-    next_gamestate.zombie_positions = advanced_zombies
 
     #advance ash
     next_gamestate.ash_position = advanced_toward(gamestate.ash_position, turn.target, 1000)
@@ -173,8 +172,8 @@ def advanced_gamestate(gamestate: Gamestate, turn: Turn):
     #shoot zombies
     surviving_zombies = []
     zombies_killed = 0
-    for zombie_position in gamestate.zombie_positions:
-        if square_distance(zombie_position, gamestate.ash_position) > 2000**2:
+    for zombie_position in advanced_zombies:
+        if square_distance(zombie_position, next_gamestate.ash_position) > 2000**2:
             surviving_zombies.append(zombie_position)
         else:
             zombies_killed += 1
@@ -184,8 +183,8 @@ def advanced_gamestate(gamestate: Gamestate, turn: Turn):
 
     #eat humans
     living_humans = gamestate.human_positions.copy()
-    for zombie_position in gamestate.zombie_positions:
-        if zombie_position in gamestate.human_positions:
+    for zombie_position in next_gamestate.zombie_positions:
+        if zombie_position in living_humans:
             living_humans.remove(zombie_position)
     next_gamestate.human_positions = living_humans
 
@@ -220,6 +219,8 @@ while True:
         zombie_positions.append(Point(zombie_x, zombie_y))
     current_gamestate.zombie_positions = zombie_positions
 
+    if next_gamestate:
+        next_gamestate.points = 0
     if next_gamestate and next_gamestate != current_gamestate:
         print(next_gamestate, current_gamestate)
         dog
