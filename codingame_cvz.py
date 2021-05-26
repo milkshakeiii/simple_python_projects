@@ -1,14 +1,28 @@
 import sys
 import math
-from dataclasses import dataclass
-from typing import List
+from collections import namedtuple
+from dataclasses import dataclass, field
+from typing import List, Set
 
 # Save humans, destroy zombies!
 BOARD_WIDTH = 16000
 BOARD_HEIGHT = 9000
 
-fibonacci_numbers =
-[
+Point = namedtuple('Point', ['x', 'y'])
+
+@dataclass
+class Turn:
+    target: Point
+
+@dataclass
+class Gamestate:
+    ash_position: Point = Point(0, 0)
+    zombie_positions: List[Point] = field(default_factory=list)
+    human_positions: Set[Point] = field(default_factory=set)
+    points: int = 0
+
+
+fibonacci_numbers = [
     0,
     1,
     1,
@@ -114,38 +128,102 @@ fibonacci_numbers =
 def fibonacci(n):
     return fibonacci_numbers[n]
 
+def square_distance(a, b):
+    return (a.x-b.x)**2 + (a.y-b.y)**2
 
-def advance_gamestate(gamestate: Gamestate, turn: Turn);
-    pass
+def nearest_neighbor(query, positions):
+    best_neighbor = None
+    best_square_distance = float('inf')
+    for this_position in positions:
+        this_square_distance = square_distance(query, this_position)
+        if this_square_distance < best_square_distance:
+            best_neighbor = this_position
+            best_square_distance = this_square_distance
+    return best_neighbor
 
+def advanced_toward(advancer, target, advance_distance):
+    square_difference = square_distance(advancer, target)
+    if (square_difference < advance_distance**2):
+        return target
 
-@dataclass
-class Turn:
+    difference_vector = Point(target.x-advancer.x, target.y-advancer.y)
+    magnitude = math.sqrt(difference_vector.x**2 + difference_vector.y**2)
+    result = Point(advancer.x + advance_distance*difference_vector.x/magnitude,
+                   advancer.y + advance_distance*difference_vector.y/magnitude)
+    return Point(math.floor(result.x), math.floor(result.y))
 
-@dataclass
-class Point:
-    x: int
-    y: int
+def points_for_zombie_kill(kill_number, humans_count):
+    return (humans_count**2)*10*fibonacci(kill_number+2)
 
-@dataclass
-class Gamestate:
-    ash_position: Point
-    zombie_positions: List[Point]
-    human_positions: List[Point]
+def advanced_gamestate(gamestate: Gamestate, turn: Turn):
+    next_gamestate = Gamestate(points = gamestate.points)
+    
+    #advance zombies
+    advanced_zombies = []
+    gamestate.human_positions.add(gamestate.ash_position)
+    for zombie_position in gamestate.zombie_positions:
+        nearest_human = nearest_neighbor(zombie_position, gamestate.human_positions)
+        advanced_zombies.append(advanced_toward(zombie_position, nearest_human, 400))
+    gamestate.human_positions.remove(gamestate.ash_position)
+    next_gamestate.zombie_positions = advanced_zombies
+
+    #advance ash
+    next_gamestate.ash_position = advanced_toward(gamestate.ash_position, turn.target, 1000)
+
+    #shoot zombies
+    surviving_zombies = []
+    zombies_killed = 0
+    for zombie_position in gamestate.zombie_positions:
+        if square_distance(zombie_position, gamestate.ash_position) > 2000**2:
+            surviving_zombies.append(zombie_position)
+        else:
+            zombies_killed += 1
+            next_gamestate.points += points_for_zombie_kill(zombies_killed,
+                                                       len(gamestate.human_positions))
+    next_gamestate.zombie_positions = surviving_zombies
+
+    #eat humans
+    living_humans = gamestate.human_positions.copy()
+    for zombie_position in gamestate.zombie_positions:
+        if zombie_position in gamestate.human_positions:
+            living_humans.remove(zombie_position)
+    next_gamestate.human_positions = living_humans
+
+    if len(living_humans) == 0:
+        next_gamestate.points = 0
+
+    return next_gamestate
+
+    
+    
 
 
 # game loop
+next_gamestate = None
 while True:
+    current_gamestate = Gamestate()
+    
     x, y = [int(i) for i in input().split()]
+    current_gamestate.ash_position = Point(x, y)
+    
     human_count = int(input())
+    human_positions = set()
     for i in range(human_count):
         human_id, human_x, human_y = [int(j) for j in input().split()]
+        human_positions.add(Point(human_x, human_y))
+    current_gamestate.human_positions = human_positions
+    
     zombie_count = int(input())
+    zombie_positions = []
     for i in range(zombie_count):
         zombie_id, zombie_x, zombie_y, zombie_xnext, zombie_ynext = [int(j) for j in input().split()]
+        zombie_positions.append(Point(zombie_x, zombie_y))
+    current_gamestate.zombie_positions = zombie_positions
 
-    # Write an action using print
-    # To debug: print("Debug messages...", file=sys.stderr, flush=True)
-
-    # Your destination coordinates
-    print("0 0")
+    if next_gamestate and next_gamestate != current_gamestate:
+        print(next_gamestate, current_gamestate)
+        dog
+    target = Point(human_x, human_y)
+    next_gamestate = advanced_gamestate(current_gamestate, Turn(target=target))
+    
+    print(human_x, human_y)
