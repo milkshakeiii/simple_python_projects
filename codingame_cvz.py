@@ -16,7 +16,7 @@ Point = namedtuple('Point', ['x', 'y'])
 
 @dataclass
 class Turn:
-    target: Point
+    vector: Point
 
 @dataclass
 class Gamestate:
@@ -156,6 +156,14 @@ def advanced_toward(advancer, target, advance_distance):
                    advancer.y + advance_distance*difference_vector.y/magnitude)
     return Point(math.floor(result.x), math.floor(result.y))
 
+def in_bounds_add(start, vector):
+    added = Point(start.x+vector.x, start.y+vector.y)
+    if 0 <= added.x < BOARD_WIDTH and 0 <= added.y <= BOARD_HEIGHT:
+        return added
+    else:
+        return start
+    
+
 def points_for_zombie_kill(kill_number, humans_count):
     return (humans_count**2)*10*fibonacci(kill_number+2)
 
@@ -171,7 +179,8 @@ def advanced_gamestate(gamestate: Gamestate, turn: Turn):
         advanced_zombies.append(advanced_toward(zombie_position, nearest_human, 400))
 
     #advance ash
-    next_gamestate.ash_position = advanced_toward(gamestate.ash_position, turn.target, 1000)
+    next_gamestate.ash_position = in_bounds_add(gamestate.ash_position, turn.vector)
+    
 
     #shoot zombies
     surviving_zombies = []
@@ -204,9 +213,9 @@ def gameover(gamestate):
 
 def run_solution(gamestate, solution):
     solution = solution[:]
-    turn = Turn(target=solution[0])
+    turn = Turn(vector=solution[0])
     while len(solution) > 0:
-        turn = Turn(target=solution.pop())
+        turn = Turn(vector=solution.pop())
         gamestate = advanced_gamestate(gamestate, turn)
     return gamestate
 
@@ -218,10 +227,19 @@ def random_point():
         return Point(random.randint(0, BOARD_WIDTH),
                      random.randint(0,BOARD_HEIGHT))
 
-rmvs = [Point(2000, 0),
-        Point(0, 2000),
-        Point(-2000, 0),
-        Point(0, -2000)]
+rmvs = [Point(1000, 0),
+        Point(0, 1000),
+        Point(-1000, 0),
+        Point(0, -1000),
+        Point(707, 707),
+        Point(707, -707),
+        Point(-707, -707),
+        Point(-707, 707),
+        Point(500, 0),
+        Point(0, 500),
+        Point(-500, 0),
+        Point(0, -500),
+        ]
 def random_movement_vector():
     return rmvs[random.randint(0, len(rmvs)-1)]
     
@@ -230,7 +248,7 @@ def simulated_annealing(starting_gamestate,
                         computation_time,
                         cool_time,
                         cool_start,
-                        starting_solution=[random_point() for i in range(OPTIMIZATION_BLOCK_SIZE)]):
+                        starting_solution=[random_movement_vector() for i in range(OPTIMIZATION_BLOCK_SIZE)]):
 
     def temperature(current_time, computation_time):
         return max(0.01, (cool_start+current_time)/cool_time)
@@ -256,7 +274,7 @@ def simulated_annealing(starting_gamestate,
         iterations += 1
         random_neighbor = current_solution[:]
         random_index = random.randint(0,len(random_neighbor)-1)
-        random_neighbor[random_index] = random_point()
+        random_neighbor[random_index] = random_movement_vector()
         new_energy = energy(starting_gamestate, random_neighbor)
         if new_energy < best_energy:
             best_energy = new_energy
@@ -331,8 +349,9 @@ while True:
         resultant_gamestate = run_solution(current_gamestate, current_solution)
         print("next: " + str(next_part_solution), file=sys.stderr)
 
-    target = current_solution.pop()
+    movement_vector = current_solution.pop()
 
-    next_gamestate = advanced_gamestate(current_gamestate, Turn(target=target))    
-    print(target.x, target.y)
+    next_gamestate = advanced_gamestate(current_gamestate, Turn(vector=movement_vector))
+    target = in_bounds_add(Point(x, y), movement_vector)
+    print(str(target.x) + " " + str(target.y))
     loop_counter += 1
