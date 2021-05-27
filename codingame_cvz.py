@@ -10,6 +10,8 @@ from typing import List, Set
 BOARD_WIDTH = 16000
 BOARD_HEIGHT = 9000
 
+OPTIMIZATION_BLOCK_SIZE = 15
+
 Point = namedtuple('Point', ['x', 'y'])
 
 @dataclass
@@ -200,33 +202,50 @@ def gameover(gamestate):
     no_zombies = len(gamestate.zombie_positions) == 0
     return no_humans or no_zombies
 
-def energy(gamestate, solution):
+def run_solution(gamestate, solution):
+    solution = solution[:]
     turn = Turn(target=solution[0])
-    while not gameover(gamestate):
-        if (len(solution) > 0):
-            turn = Turn(target=solution.pop())
+    while len(solution) > 0:
+        turn = Turn(target=solution.pop())
         gamestate = advanced_gamestate(gamestate, turn)
+    return gamestate
+
+def energy(gamestate, solution):
+    gamestate = run_solution(gamestate, solution)
     return -gamestate.points/10000
 
-def simulated_annealing(starting_gamestate, computation_time):
-    def temperature(current_time, computation_time):
-        return max(0.01, current_time/computation_time)
-
-    def acceptance_probability(old_energy, new_energy, current_temperature):
-        return new_energy <= old_energy
-        #exponent = ((old_energy-new_energy)/current_temperature)
-        #left_side = math.e**exponent
-        #print(old_energy, new_energy, file=sys.stderr)
-        #return left_side > random.random()
-
-    def random_point():
+def random_point():
         return Point(random.randint(0, BOARD_WIDTH),
                      random.randint(0,BOARD_HEIGHT))
 
+rmvs = [Point(2000, 0),
+        Point(0, 2000),
+        Point(-2000, 0),
+        Point(0, -2000)]
+def random_movement_vector():
+    return rmvs[random.randint(0, len(rmvs)-1)]
+    
+
+def simulated_annealing(starting_gamestate,
+                        computation_time,
+                        cool_time,
+                        cool_start,
+                        starting_solution=[random_point() for i in range(OPTIMIZATION_BLOCK_SIZE)]):
+
+    def temperature(current_time, computation_time):
+        return max(0.01, (cool_start+current_time)/cool_time)
+
+    def acceptance_probability(old_energy, new_energy, current_temperature):
+        #return new_energy <= old_energy
+        exponent = min(0, ((old_energy-new_energy)/current_temperature))
+        left_side = math.e**exponent
+        #print(current_temperature, file=sys.stderr)
+        return left_side > random.random()
+
     start_time = time.time()
 
-    current_solution = [random_point() for i in range(15)]
-    old_energy = energy(starting_gamestate, current_solution[:])
+    current_solution = starting_solution[:]
+    old_energy = energy(starting_gamestate, current_solution)
     best_energy = old_energy
     best_solution = current_solution
     
@@ -238,7 +257,7 @@ def simulated_annealing(starting_gamestate, computation_time):
         random_neighbor = current_solution[:]
         random_index = random.randint(0,len(random_neighbor)-1)
         random_neighbor[random_index] = random_point()
-        new_energy = energy(starting_gamestate, random_neighbor[:])
+        new_energy = energy(starting_gamestate, random_neighbor)
         if new_energy < best_energy:
             best_energy = new_energy
             best_solution = random_neighbor
@@ -257,11 +276,13 @@ def simulated_annealing(starting_gamestate, computation_time):
         
     
     
-first_half_solution = [Point(0, 0)]
-second_half_solution = [Point(0, 0)]
+current_solution = [Point(0, 0)]
+next_part_solution = [Point(0, 0)]*15
+resultant_gamestate = Gamestate()
 
 # game loop
 next_gamestate = None
+loop_counter = 0
 while True:
     current_gamestate = Gamestate()
     
@@ -288,26 +309,30 @@ while True:
         print(next_gamestate, current_gamestate)
         dog
 
-    
-
-    if next_gamestate == None:
+    if loop_counter == 0:
         think_time = 0.9
-        first_half_solution = simulated_annealing(current_gamestate, think_time)
+        current_solution = simulated_annealing(current_gamestate,
+                                               think_time,
+                                               think_time,
+                                               0)
+        resultant_gamestate = run_solution(current_gamestate, current_solution)
+        print(current_solution, file=sys.stderr)
     else:
         think_time = 0.09
-        second_half_solution = simulated_annealing(current_gamestate, think_time)
+        cool_time = OPTIMIZATION_BLOCK_SIZE*0.09
+        next_part_solution = simulated_annealing(resultant_gamestate,
+                                                 think_time,
+                                                 cool_time,
+                                                 cool_time*(loop_counter%OPTIMIZATION_BLOCK_SIZE)/OPTIMIZATION_BLOCK_SIZE,
+                                                 starting_solution=next_part_solution[:])
 
-    target = Point(0, 0)
-    if (len(first_half_solution) == 0):
-        first_half_solution = [target]
-    first_half_energy = energy(current_gamestate, first_half_solution[:])
-    second_half_energy = energy(current_gamestate, second_half_solution[:])
-    if first_half_energy < second_half_energy:
-        print(first_half_solution, file=sys.stderr)
-        target = first_half_solution.pop()
-    else:
-        first_half_solution.pop()
-        target = second_half_solution.pop()
-    next_gamestate = advanced_gamestate(current_gamestate, Turn(target=target))
-    
+    if len(current_solution) == 0:
+        current_solution = next_part_solution
+        resultant_gamestate = run_solution(current_gamestate, current_solution)
+        print("next: " + str(next_part_solution), file=sys.stderr)
+
+    target = current_solution.pop()
+
+    next_gamestate = advanced_gamestate(current_gamestate, Turn(target=target))    
     print(target.x, target.y)
+    loop_counter += 1
