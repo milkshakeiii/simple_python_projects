@@ -39,10 +39,21 @@ class FibHeap():
         else:
             self.trees.appendleft(new_node)
         self.nodes[inserted_value] = new_node
+
+    def decrease_key_or_insert(self, old_value, new_value):
+        if old_value in self.nodes:
+            self.decrease_key(old_value, new_value)
+        else:
+            self.insert(new_value)
         
     def extract_minimum(self):
-        min_node = self.trees.pop()
+        min_node = self.trees.pop()    
         self.trees += min_node.children
+
+        if (len(self.trees) == 0):
+            del self.nodes[min_node.value]
+            return min_node.value
+        
         new_trees = {}
         for tree in self.trees:
             degree = len(tree.children)
@@ -63,7 +74,7 @@ class FibHeap():
                 new_trees[smaller_tree_degree+1] = new_trees.get(smaller_tree_degree+1, set())
                 new_trees[smaller_tree_degree+1].add(smaller_tree)
 
-        new_minimum = Node([], float('inf'))
+        new_minimum = Node([], (float('inf'), float('inf')))
         new_minimum_key = None
         for key in new_trees.keys():
             trees = list(new_trees[key])
@@ -116,16 +127,22 @@ def djikstras(source, destination, turbolifts):
 
     frontier = FibHeap()
     frontier.insert((0, source))
+    distances = {source: 0}
+    explored = set()
 
     while len(frontier.trees) > 0:
         minimum_key = frontier.extract_minimum()[1]
+        explored.add(minimum_key)
         children = turbolifts.get(minimum_key, {})
         for child in children.items():
-            previous_distance = frontier.get(child[0], float('inf')) #start here
-            new_best = min(frontier[minimum_key]+child[1], previous_distance)
-            frontier[child[0]] = new_best
+            if child[0] in explored:
+                continue
+            previous_distance = distances.get(child[0], float('inf'))
+            new_best = min(distances[minimum_key]+child[1], previous_distance)
+            frontier.decrease_key_or_insert((previous_distance, child[0]), (new_best, child[0]))
+            distances[child[0]] = new_best
         if minimum_key == destination:
-            return frontier[minimum_key]
+            return distances[minimum_key]
 
     return -1
 
