@@ -74,26 +74,35 @@ class FibHeap():
                 new_minimum = tree
                 new_minimum_key = key
         del new_trees[new_minimum_key]
-        self.trees = [list(trees)[0] for trees in new_trees.values() if len(trees)>0]
+        self.trees = deque([list(trees)[0] for trees in new_trees.values() if len(trees)>0])
         self.trees.append(new_minimum)
         del self.nodes[min_node.value]
         return min_node.value
 
     def decrease_key(self, old, new):
-        node = self.nodes[old]
+        self.nodes[old].value = new
+        self.nodes[new] = self.nodes[old]
         del self.nodes[old]
-        node.value = new
-        self.nodes[new] = node
-        if new.parent != None:
-            parent = new.parent
-            new.parent.children.remove(new)
-            new.parent = None
-            while parent.marked:
-                parent.marked = False
-                child = parent
-                parent = parent.parent
-                parent.children.remove(child)
-                child.parent = None
+        parent = self.nodes[new].parent
+        if parent != None and parent.value > new:
+            parent.children.remove(self.nodes[new])
+            self.nodes[new].parent = None
+            if not parent.marked:
+                parent.marked = True
+            else:
+                while parent.marked and parent.parent != None:
+                    child = parent
+                    parent = parent.parent
+                    parent.children.remove(child)
+                    self.trees.appendleft(child)
+                    child.marked = False
+                    child.parent = None
+                parent.marked = True
+            self.nodes[new].marked = False
+            self.trees.appendleft(self.nodes[new])
+        if new < self.find_minimum():
+            self.trees.remove(self.nodes[new])
+            self.trees.append(self.nodes[new])
 
     def delete(self, value):
         self.decrease_key(value, float('-inf'))
@@ -105,19 +114,18 @@ def djikstras(source, destination, turbolifts):
     if source not in turbolifts:
         return -1
 
-    frontier = {}
-    frontier[source] = 0
+    frontier = FibHeap()
+    frontier.insert((0, source))
 
-    while len(frontier) > 0:
-        minimum_key = min(frontier.items(), key=lambda item: item[1])[0]
+    while len(frontier.trees) > 0:
+        minimum_key = frontier.extract_minimum()[1]
         children = turbolifts.get(minimum_key, {})
         for child in children.items():
-            previous_distance = frontier.get(child[0], float('inf'))
+            previous_distance = frontier.get(child[0], float('inf')) #start here
             new_best = min(frontier[minimum_key]+child[1], previous_distance)
             frontier[child[0]] = new_best
         if minimum_key == destination:
             return frontier[minimum_key]
-        del frontier[minimum_key]
 
     return -1
 
