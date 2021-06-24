@@ -34,15 +34,10 @@ class FibHeap():
 
     def find_minimum(self):
         return self.trees[-1].value
-    
-    def merge(self, other_heap):
-        self.trees += other_heap.trees
 
     def insert(self, inserted_value):
-        #print("insert")
         if (inserted_value in self.nodes):
-            #raise Exception("Duplicate values not allowed")
-            return
+            raise Exception("Duplicate values not allowed")
         
         new_node = Node([], inserted_value)
         if len(self.trees) == 0 or inserted_value < self.find_minimum():
@@ -58,9 +53,6 @@ class FibHeap():
             self.insert(new_value)
         
     def extract_minimum(self):
-        #print("extract minimum")
-        #print(self)
-        #print(self.nodes.keys())
         min_node = self.trees.pop()    
         self.trees += min_node.children
         for child in min_node.children:
@@ -90,8 +82,6 @@ class FibHeap():
                 new_trees[smaller_tree_degree+1] = new_trees.get(smaller_tree_degree+1, set())
                 new_trees[smaller_tree_degree+1].add(smaller_tree)
 
-        #print("new trees")
-        #print(new_trees)
         new_minimum = None
         new_minimum_key = None
         for key in new_trees.keys():
@@ -102,31 +92,23 @@ class FibHeap():
             if new_minimum == None or tree.value < new_minimum.value:
                 new_minimum = tree
                 new_minimum_key = key
-        #print("new min: " + str(new_minimum.value))
         del new_trees[new_minimum_key]
         self.trees = deque([list(trees)[0] for trees in new_trees.values() if len(trees)>0])
         self.trees.append(new_minimum)
-        #print("old min: " + str(min_node.value))
         del self.nodes[min_node.value]
-        #print(self)
         return min_node.value
 
     def decrease_key(self, old, new):
-        if new in self.nodes:
-            #raise Exception("Duplicate values not allowed")
-            return
-        #print("---------------------------------decrease key")
-        #print(self.nodes.keys())
-        #print("old: " + str(old) + ", new: " + str(new))
-        #print(self)
         if old == new:
             return
+        
+        if new in self.nodes:
+            raise Exception("Second argument to decrease_key must not already exist in the heap")
         
         self.nodes[old].value = new
         self.nodes[new] = self.nodes[old]
         del self.nodes[old]
         parent = self.nodes[new].parent
-        #print("Parent: " + str(parent))
         if parent != None and parent.value > new:
             parent.children.remove(self.nodes[new])
             self.nodes[new].parent = None
@@ -144,19 +126,9 @@ class FibHeap():
             self.nodes[new].marked = False
             self.trees.appendleft(self.nodes[new])
         if new < self.find_minimum():
-            #print(self.trees)
-            #print(self.nodes[new])
             self.trees.remove(self.nodes[new])
-            #print("---")
-            #print(self)
             self.trees.append(self.nodes[new])
-        #print("---")
-        #print(self)
-        #print("decrease key---------------------------------")
 
-    def delete(self, value):
-        self.decrease_key(value, float('-inf'))
-        self.extract_minimum()
 
 def djikstras(source, destination, turbolifts):
     if source == destination:
