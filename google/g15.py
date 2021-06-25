@@ -1,4 +1,5 @@
 from collections import deque
+from heapq import heappush, heappop
 
 class Node():
     def __init__(self, children, value):
@@ -10,6 +11,44 @@ class Node():
     def add_child(self, child):
         self.children.append(child)
         child.parent = self
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+class PriorityQueue():
+    def __init__(self):
+        self.heap = []
+        self.nodes = {}
+
+    def empty(self):
+        return len(self.nodes) == 0
+
+    def decrease_key_or_insert(self, old_value, new_value):
+        if old_value in self.nodes:
+            self.decrease_key(old_value, new_value)
+        else:
+            self.insert(new_value)
+
+    def decrease_key(self, old, new):
+        if old == new:
+            return
+        
+        self.nodes[old].marked = True
+        del self.nodes[old]
+        self.insert(new)
+
+    def insert(self, inserted_value):
+        new_node = Node([], inserted_value)
+        heappush(self.heap, new_node)
+        self.nodes[inserted_value] = new_node
+
+    def extract_minimum(self):
+        popped = None
+        while popped == None or popped.marked:
+            popped = heappop(self.heap)
+        del self.nodes[popped.value]
+        return popped.value
+
 
 class FibHeap():            
     def __init__(self):
@@ -31,6 +70,9 @@ class FibHeap():
 
     def __str__(self):
         return self.__repr__()
+
+    def empty(self):
+        return len(self.trees) == 0
 
     def find_minimum(self):
         return self.trees[-1].value
@@ -136,12 +178,12 @@ def djikstras(source, destination, turbolifts):
     if source not in turbolifts:
         return -1
 
-    frontier = FibHeap()
+    frontier = PriorityQueue()
     frontier.insert((0, source))
     distances = {source: 0}
     explored = set()
 
-    while len(frontier.trees) > 0:
+    while not frontier.empty():
         minimum_key = frontier.extract_minimum()[1]
         explored.add(minimum_key)
         children = turbolifts.get(minimum_key, {})
