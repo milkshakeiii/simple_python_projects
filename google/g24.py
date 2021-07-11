@@ -28,7 +28,8 @@ def one_dimensional_meet_and_party(positions, weight_changes):
     if abs(low_distance + weight - end_sum/2) < abs(low_distance-end_sum/2):
         best_position += 1
 
-    
+    distance_sum = 0
+    for
     
 
 def binary_search(a, value):
