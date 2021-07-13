@@ -76,9 +76,9 @@ for i in range(T):
     best_problems = []
     for student in students:
 
-                #use tree
+        # use tree
         
-                best_problems.append(str(best_problem))
+        best_problems.append(str(best_problem))
 
     print("Case #" + str(i+1) + ": " + ' '.join(best_problems))
 
