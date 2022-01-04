@@ -1,0 +1,1 @@
+print("After many minutes of meticulous planning, the Planetary Python Society's first ever Scrappy Mission To a Nearby Star is almost ready to launch.  There's just one problem.  The launch sequence is triggered by a password protected python file on your laptop, and you forgot the password.  Can you use your knowledge of python to save the launch?")
