@@ -37,8 +37,8 @@ def exhaustive_solve(sudoku):
             if sudoku[i][j] == 0:
                 for k in range(1, 10):
                     sudoku[i][j] = k
-                    result = solve(sudoku)
-                    if (result != None):
+                    result = exhaustive_solve(sudoku)
+                    if (not (result is None)):
                             return result
                     sudoku[i][j] = 0
     return None
