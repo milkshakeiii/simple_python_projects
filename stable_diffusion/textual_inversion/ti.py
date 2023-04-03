@@ -99,7 +99,8 @@ def log_validation(text_encoder, tokenizer, unet, vae, args, accelerator, weight
         torch_dtype=weight_dtype,
     )
     pipeline.scheduler = DPMSolverMultistepScheduler.from_config(pipeline.scheduler.config)
-    pipeline.enable_sequential_cpu_offload()#pipeline = pipeline.to(accelerator.device)
+    #pipeline.enable_sequential_cpu_offload()
+    pipeline = pipeline.to(accelerator.device)
     pipeline.set_progress_bar_config(disable=True)
 
     # run inference
