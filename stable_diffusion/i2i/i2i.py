@@ -23,19 +23,20 @@ pipe.enable_sequential_cpu_offload()
 #pipe.enable_attention_slicing(1)
 #pipe.enable_xformers_memory_efficient_attention()
 
-def i2i(source_image_prefix, prompt, negative_prompt, description = None, count = 1, steps = 50, seed = None):
+def i2i(source_image_prefix, prompt, negative_prompt, description = None, count = 1, steps = 50, seed = None, strength = 0.8):
     filename = source_image_prefix + ".png"
     with PIL.Image.open(filename) as source_image:
         if (seed is None):
             seed = random.randint(0, 10000)
-        generator = [torch.Generator(device="cuda").manual_seed(seed)]
+        generator = torch.Generator(device="cpu").manual_seed(seed)
         for i in range(count):
             output = pipe(prompt,
                           negative_prompt = negative_prompt,
                           generator = generator,
                           num_inference_steps = steps,
                           image=source_image,
-                          guidance_scale = guidance_scale)
+                          guidance_scale = guidance_scale,
+                          strength = strength)
             for image in output.images:
                 if description is None:
                     description = prompt.replace(" ", "_").replace(",", "")
