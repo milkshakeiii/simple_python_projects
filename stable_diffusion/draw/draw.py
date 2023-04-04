@@ -15,10 +15,10 @@ pipe = StableDiffusionPipeline.from_pretrained(model_id)#.to("cuda")#"runwayml/s
 #        "CompVis/stable-diffusion-v1-4")#, 
 #        revision="fp16", torch_dtype=torch.float16)
 
-#pipe.to("cuda")
+pipe.to("cuda")
 
 #pipe.enable_attention_slicing()
-pipe.enable_sequential_cpu_offload()
+#pipe.enable_sequential_cpu_offload()
 #pipe.enable_attention_slicing(1)
 #pipe.enable_xformers_memory_efficient_attention()
 
