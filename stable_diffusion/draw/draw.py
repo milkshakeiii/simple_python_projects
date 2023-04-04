@@ -5,7 +5,8 @@ from torch import autocast
 from diffusers import StableDiffusionPipeline
 
 #model_id = "stabilityai/stable-diffusion-2-base"
-model_id = "stabilityai/stable-diffusion-2-1"
+#model_id = "stabilityai/stable-diffusion-2-1"
+model_id = "/home/milkshake/simple_python_projects/stable_diffusion/textual_inversion/some_garbage"
 #model_id = "runwayml/stable-diffusion-v1-5"
 
 # get your token at https://huggingface.co/settings/tokens
